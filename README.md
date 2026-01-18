@@ -228,18 +228,3 @@ Define these before including `stlog.h`.
 
 ---
 
-## License
-
-MIT (or choose your license)
-
----
-
-## Project Name Ideas
-
-Recommended: **easySTlogger**
-
-Alternatives:
-- **tinySTlog**
-- **stloglite**
-- **stm32-uart-log**
-- **microSTlogger**
