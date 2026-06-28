@@ -59,7 +59,7 @@ extern "C" {
  *  User Configuration
  * ========================================================= */
 
-/* 日志总开关：1=启用 0=禁用 */
+/* Master logger switch: 1 = enabled, 0 = disabled */
 #ifndef YORULOG_ENABLE
   #ifdef STLOG_ENABLE
     #define YORULOG_ENABLE STLOG_ENABLE
@@ -68,9 +68,9 @@ extern "C" {
   #endif
 #endif
 
-/* 模式选择：
- * 0 = FULL 模式（环形缓冲区 + DMA 自动发送）
- * 1 = MINI 模式（无缓冲区，直接阻塞发送，超低 Flash/RAM 占用）
+/* Mode selection:
+ * 0 = FULL mode (ring buffer + automatic DMA transmission)
+ * 1 = MINI mode (no buffer, direct blocking transmit, ultra-low Flash/RAM usage)
  */
 #ifndef YORULOG_MINI
   #ifdef STLOG_MINI
@@ -80,7 +80,7 @@ extern "C" {
   #endif
 #endif
 
-/* 换行模式：1=输出 \r\n（Windows 风格） 0=仅 \n */
+/* Newline mode: 1 = output \r\n (Windows style), 0 = output only \n */
 #ifndef YORULOG_CRLF
   #ifdef STLOG_CRLF
     #define YORULOG_CRLF STLOG_CRLF
@@ -89,7 +89,7 @@ extern "C" {
   #endif
 #endif
 
-/* 时间戳开关：1=在日志前添加 [tick_ms]（使用 HAL_GetTick） */
+/* Timestamp switch: 1 = prepend [tick_ms] using HAL_GetTick */
 #ifndef YORULOG_TIMESTAMP
   #ifdef STLOG_TIMESTAMP
     #define YORULOG_TIMESTAMP STLOG_TIMESTAMP
@@ -98,7 +98,7 @@ extern "C" {
   #endif
 #endif
 
-/* 默认日志等级（0~4）：0=ERROR, 1=WARN, 2=INFO, 3=DEBUG, 4=TRACE */
+/* Default log level (0~4): 0=ERROR, 1=WARN, 2=INFO, 3=DEBUG, 4=TRACE */
 #ifndef YORULOG_DEFAULT_LEVEL
   #ifdef STLOG_DEFAULT_LEVEL
     #define YORULOG_DEFAULT_LEVEL STLOG_DEFAULT_LEVEL
@@ -107,7 +107,7 @@ extern "C" {
   #endif
 #endif
 
-/* 日志前缀自定义 */
+/* Custom log prefixes */
 #ifndef YORULOG_PREFIX_E
   #ifdef STLOG_PREFIX_E
     #define YORULOG_PREFIX_E STLOG_PREFIX_E
@@ -144,7 +144,7 @@ extern "C" {
   #endif
 #endif
 
-/* FULL 模式环形缓冲区大小（字节数，越小越省 RAM） */
+/* FULL mode ring buffer size in bytes; smaller values save RAM */
 #ifndef YORULOG_TX_BUF_SIZE
   #ifdef STLOG_TX_BUF_SIZE
     #define YORULOG_TX_BUF_SIZE STLOG_TX_BUF_SIZE
@@ -171,9 +171,10 @@ extern "C" {
 #endif
 
 /* Capability tags
- * - H7 默认把 .data/.bss 放在 DTCM 的工程很常见，DMA 不能访问；
- *   因此为 H7 自动开启 DMA 可访问缓冲区支持。
- * - 其他系列默认关闭，保持最小接入面；如有需要可手动 override。
+ * - On H7, many projects place .data/.bss in DTCM by default, which DMA cannot access.
+ *   For that reason, H7 enables DMA-accessible buffer support automatically.
+ * - Other series keep this disabled by default to minimize integration surface;
+ *   override it manually if needed.
  */
 #ifndef YORULOG_NEEDS_DMA_ACCESSIBLE_BUFFER
   #if YORULOG_PLATFORM_STM32H7
@@ -183,7 +184,7 @@ extern "C" {
   #endif
 #endif
 
-/* H7/F7 这类可能带 D-Cache 的平台可在后续需要时用它扩展 cache 维护策略。 */
+/* H7/F7-class platforms may have D-Cache; this tag can be used later to extend cache maintenance policy. */
 #ifndef YORULOG_HAS_DCACHE_RISK
   #if YORULOG_PLATFORM_STM32H7 || YORULOG_PLATFORM_STM32F7
     #define YORULOG_HAS_DCACHE_RISK 1
@@ -192,9 +193,9 @@ extern "C" {
   #endif
 #endif
 
-/* FULL 模式 DMA 发送缓冲区所在 section
- * STM32H7 上默认 .bss/.data 常在 DTCM，DMA 无法访问；
- * 因此默认把发送缓冲区单独放到可 DMA 访问的 RAM_D2 section。
+/* Section used for the FULL mode DMA transmit buffer.
+ * On STM32H7, .bss/.data are often placed in DTCM by default, which DMA cannot access.
+ * Therefore the transmit buffer is placed into a DMA-accessible RAM_D2 section by default.
  */
 #ifndef YORULOG_DMA_SECTION
   #ifdef STLOG_DMA_SECTION
@@ -212,9 +213,9 @@ extern "C" {
 #define YORULOG_SECTION_ATTR(name)
 #endif
 
-/* 缓冲区满时的处理策略：
- * 1 = 丢弃新数据（不阻塞，最稳定）
- * 0 = 覆盖旧数据（更实时）
+/* Buffer-full policy:
+ * 1 = drop new data (non-blocking, most stable)
+ * 0 = overwrite old data (more real-time)
  */
 #ifndef YORULOG_DROP_NEW_ON_FULL
   #ifdef STLOG_DROP_NEW_ON_FULL
@@ -224,11 +225,11 @@ extern "C" {
   #endif
 #endif
 
-/* 缓冲区满时阻塞等待腾出空间：
- * 1 = 优先保证日志完整，不额外增加 RAM，占用高峰时会阻塞
- * 0 = 维持旧行为（配合 YORULOG_DROP_NEW_ON_FULL 决定丢新/覆盖旧）
+/* Block when the buffer is full until space becomes available:
+ * 1 = prioritize log completeness without extra RAM; may block under peak load
+ * 0 = keep legacy behavior (drop new or overwrite old depending on YORULOG_DROP_NEW_ON_FULL)
  *
- * 对于 STM32H7 这类 DMA logger，小缓冲区场景下推荐开启。
+ * Recommended for DMA logger setups such as STM32H7 when using a small buffer.
  */
 #ifndef YORULOG_BLOCK_ON_FULL
   #ifdef STLOG_BLOCK_ON_FULL
@@ -238,11 +239,11 @@ extern "C" {
   #endif
 #endif
 
-/* ERROR/WARN 日志强制阻塞发送（推荐开启）：
- * 1 = ERROR/WARN 会阻塞等待发送完成，确保重要日志不丢失
- * 0 = 所有日志使用相同的发送策略
- * - FULL 模式：ERROR/WARN 会刷新缓冲区（必要时阻塞）
- * - MINI 模式：本身就是阻塞发送
+/* Force blocking transmit for ERROR/WARN logs (recommended):
+ * 1 = ERROR/WARN wait until transmission completes so critical logs are not lost
+ * 0 = all levels use the same transmit strategy
+ * - FULL mode: ERROR/WARN flush the buffer and may block if needed
+ * - MINI mode: already blocking by design
  */
 #ifndef YORULOG_FORCE_BLOCKING_EW
   #ifdef STLOG_FORCE_BLOCKING_EW
@@ -252,8 +253,8 @@ extern "C" {
   #endif
 #endif
 
-/* 并发保护锁（防止中断/多线程输出混乱）
- * 自定义示例：
+/* Concurrency protection lock to avoid mixed output from interrupts/threads.
+ * Custom example:
  *   #define YORULOG_LOCK()   uint32_t pm=__get_PRIMASK(); __disable_irq();
  *   #define YORULOG_UNLOCK() if(!pm) __enable_irq();
  */
@@ -272,7 +273,7 @@ extern "C" {
   #endif
 #endif
 
-/* 时间戳来源（可自定义替换 HAL_GetTick） */
+/* Timestamp source; can be overridden instead of HAL_GetTick */
 #ifndef YORULOG_NOW_MS
   #ifdef STLOG_NOW_MS
     #define YORULOG_NOW_MS() STLOG_NOW_MS()
@@ -382,15 +383,21 @@ typedef YORULOG_HandleTypeDef stlog_t;
  */
 #if defined(YORULOG_DEFINE_GLOBALS) || defined(STLOG_DEFINE_GLOBALS)
 YORULOG_HandleTypeDef hYorulog;
+#if !STLOG_MINI
 YORULOG_SECTION_ATTR(YORULOG_DMA_SECTION) __attribute__((aligned(32)))
 unsigned char yorulog_tx_buf[YORULOG_TX_BUF_SIZE];
+#endif
 #else
 extern YORULOG_HandleTypeDef hYorulog;
+#if !STLOG_MINI
 extern unsigned char yorulog_tx_buf[YORULOG_TX_BUF_SIZE];
+#endif
 #endif
 
 #define g_stlog hYorulog
+#if !STLOG_MINI
 #define g_stlog_tx_buf yorulog_tx_buf
+#endif
 
 /* =========================================================
  *  Internal Helper Functions (no stdlib dependency)
