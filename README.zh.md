@@ -1,252 +1,281 @@
-# easySTlogger
+# Yorulog
 
-一个 **极简、单头文件** 的 STM32（HAL）串口日志模块，专为 **极低 Flash / RAM 占用** 设计，支持 **日志分级、前缀、可选时间戳**，并提供可选的 **FULL 模式（环形缓冲 + 自动 DMA 发送）**。
+一个面向 STM32 HAL 的 **极简、单头文件** UART 日志库，目标是在 **尽可能低的 Flash / RAM 占用** 下，提供 **日志分级、前缀、可选时间戳**，以及可选的 **FULL 模式**（环形缓冲 + 自动 DMA 发送）。
 
 > 不使用 `printf`  
-> 不引入格式化解析  
+> 不引入格式化解析器  
 > 不依赖沉重的标准库  
 >  
-> 只需一个头文件即可使用。
+> 只要一个头文件就能开始打日志。
 
 ---
 
-## 特性一览
+## 特性
 
-- ✅ **单头文件**（`stlog.h`），即拷即用
-- ✅ **仅依赖 HAL + UART**，适用于各类 STM32
-- ✅ **两种工作模式**
-  - **MINI 模式**：极低 Flash / RAM，占用最小，阻塞直发
-  - **FULL 模式**：环形缓冲 + **自动 DMA TX**（存在 `huart->hdmatx` 时）
-- ✅ **日志分级**：`ERROR / WARN / INFO / DEBUG / TRACE`
-- ✅ **分级前缀**：`[E] [W] [I] [D] [T]`
-- ✅ **可选时间戳**：`[HAL_GetTick()]`（毫秒）
-- ✅ **类型自适应 print / println**
-  - 基于 C11 `_Generic`
-  - 支持：字符串、字符、整数、指针
-- ✅ **链接器友好**
-  - 强烈受益于  
-    `-ffunction-sections -fdata-sections -Wl,--gc-sections`
+- **单头文件**：`yorulog.h`
+- **仅依赖 HAL**：基于 UART，适用于多种 STM32 系列
+- **两种模式**
+  - **MINI**：极小体积，阻塞直发
+  - **FULL**：环形缓冲；当 `huart->hdmatx` 存在时自动启用 DMA TX
+- **日志等级**：`ERROR / WARN / INFO / DEBUG / TRACE`
+- **分级前缀**：`[E] [W] [I] [D] [T]`
+- **可选时间戳**：`[HAL_GetTick()]`
+- **基于 C11 `_Generic` 的类型自适应** `YORULOG_Print()` / `YORULOG_Println()`
+- **平台感知能力**
+  - 自动探测 STM32 HAL 头文件
+  - 在 STM32H7 上默认自动启用 DMA 可访问缓冲区支持
 
 ---
 
 ## 为什么不用 `printf`？
 
-在嵌入式系统（尤其是小 Flash MCU）中，`printf` 往往会：
+在小型 MCU 上，`printf` 往往会引入体积不小的格式化运行时，同时带来更高的栈占用和更不可预测的代码尺寸。
 
-- 引入大量格式化代码（`vfprintf` / `dtoa` 等）
-- Flash 占用不可控（动辄数 KB 甚至十几 KB）
-- 栈占用大，不适合中断环境
-- 很难裁剪和模块化
-
-**easySTlogger 完全绕开格式化解析**，只做“最小必要输出”，体积与行为都高度可控。
-
-在 STM32G0（G031，-O3）上的实测：
-- **MINI 模式：Flash 增量 < 400B**
-- **FULL 模式：Flash 增量 ~1.2KB**
+Yorulog 完全绕开格式化解析，因此代码大小和运行行为都更简单、更可控。
 
 ---
 
-## 体积对比（实测数据）
+## 快速开始
 
-以下数据 **全部来自真实测试结果**，编译条件如下：
+### 1. 添加 `yorulog.h`
 
-- `-O3`
-- `--specs=nano.specs`
-- `-ffunction-sections -fdata-sections -Wl,--gc-sections`
-- 目标芯片：**STM32G031（64 KB Flash / 8 KB RAM）**
+把头文件放到工程里，例如：
 
-### 基线（仅 HAL + USART1）
-
-| 资源 | 占用 |
-|----|----|
-| RAM | 1728 B |
-| Flash | 7904 B |
-
----
-
-### 启用 MINI 模式
-
-| 资源 | 占用 | 增量 |
-|----|----|----|
-| RAM | 1736 B | **+8 B** |
-| Flash | 8288 B | **+384 B** |
-
-> MINI 模式的体积代价几乎可以忽略，  
-> 可安全常驻于量产固件中。
-
----
-
-### 启用 FULL 模式（环形缓冲 + 自动 DMA）
-
-| 资源 | 占用 | 增量 |
-|----|----|----|
-| RAM | 2264 B | **+536 B** |
-| Flash | 9096 B | **+1192 B** |
-
-> RAM 增量主要来自环形缓冲区，  
-> Flash 增量即完整日志系统的全部成本。
-
----
-
-### 与 `printf` 的对比
-
-STM32 工程中常见 `printf` 串口调试的体积代价：
-
-| 方案 | Flash 增量 |
-|----|-----------|
-| `printf("%d")` | +3 KB ~ +8 KB |
-| `printf("%f")` | +10 KB ~ +20 KB |
-| **easySTlogger（MINI）** | **+0.38 KB** |
-| **easySTlogger（FULL）** | **+1.2 KB** |
-
-easySTlogger 不会引入 `vfprintf`、浮点格式化或不可控的栈开销。
-
-
-## 快速上手
-
-### 1️⃣ 添加 `stlog.h`
-
-将 `stlog.h` 放入工程，例如：
-
-```
-/Core/Inc/stlog.h
+```text
+/Core/easy-ST-Logger/yorulog.h
 ```
 
-并在代码中包含：
+### 2. 在包含前定义配置宏
+
+必须在且仅在 **一个** `.c` 文件里，在包含 `yorulog.h` 前定义 `YORULOG_DEFINE_GLOBALS`：
 
 ```c
-#include "stlog.h"
+#define YORULOG_DEFINE_GLOBALS
+#include "yorulog.h"
 ```
 
----
-
-### 2️⃣ 通过宏选择模式（必须在 include 之前）
-
-#### MINI 模式（极致轻量）
+其他源文件里正常包含即可：
 
 ```c
-#define STLOG_MINI 1
-#define STLOG_TIMESTAMP 1   // 可选
-#include "stlog.h"
+#include "yorulog.h"
 ```
 
-#### FULL 模式（环形缓冲 + DMA）
+### 3. 选择模式
+
+#### MINI 模式
 
 ```c
-#define STLOG_MINI 0
-#define STLOG_TX_BUF_SIZE 512
-#define STLOG_TIMESTAMP 1
-#include "stlog.h"
+#define YORULOG_MINI 1
+#define YORULOG_TIMESTAMP 1
+#define YORULOG_DEFINE_GLOBALS
+#include "yorulog.h"
 ```
 
----
+#### FULL 模式
 
-### 3️⃣ 使用 USART 初始化
+```c
+#define YORULOG_MINI 0
+#define YORULOG_TX_BUF_SIZE 512
+#define YORULOG_TIMESTAMP 1
+#define YORULOG_DEFINE_GLOBALS
+#include "yorulog.h"
+```
+
+### 4. 使用 UART 句柄初始化
 
 ```c
 extern UART_HandleTypeDef huart1;
 
 int main(void)
 {
-  HAL_Init();
-  SystemClock_Config();
-  MX_USART1_UART_Init();
+    HAL_Init();
+    SystemClock_Config();
+    MX_USART1_UART_Init();
 
-  stlog_init(&huart1);
-  log_set_level(LOG_DEBUG);
+    YORULOG_Init(&huart1);
+    YORULOG_SetLevel(YORULOG_LEVEL_DEBUG);
 
-  logi("boot");
-  logd(123);
-  logw((void*)0x20000000);
+    YORULOG_LogInfo("boot");
+    YORULOG_LogDebug(123);
+    YORULOG_LogWarn((void*)0x20000000);
 
-  while (1) { }
+    while (1) { }
 }
 ```
 
 ---
 
-## FULL 模式：DMA 发送完成回调（必须）
+## FULL 模式与 DMA
 
-当 `huart->hdmatx != NULL` 时，FULL 模式会自动使用 DMA 发送。  
-你需要在 HAL 回调中转发：
+如果 `huart->hdmatx != NULL`，FULL 模式会自动使用 DMA TX。
+
+你需要在 HAL 的发送完成回调中转发：
 
 ```c
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-    stlog_on_tx_cplt(huart);
+    YORULOG_TxCpltCallback(huart);
 }
 ```
 
-如果未配置 DMA TX，FULL 模式会自动回退为阻塞发送。
+如果没有配置 TX DMA，FULL 模式会自动回退到阻塞发送。
 
 ---
 
-## API 使用说明
+## STM32H7 说明
 
-### 带前缀与换行的日志接口
+在 STM32H7 上，很多工程会把默认的 `.data/.bss` 放在 DTCM 中，而 DMA 无法访问 DTCM。  
+因此 Yorulog 会在 H7 上默认自动启用 **DMA 可访问发送缓冲区**。
+
+默认的 H7 缓冲区 section 为：
 
 ```c
-loge("fatal");
-logw("warn");
-logi("info");
-logd("debug");
-logt("trace");
+#define YORULOG_DMA_SECTION ".RAM_D2"
 ```
 
-每个接口 **只接收一个参数**（类型自动识别）：
+你的链接脚本需要把这个 section 放到 DMA 可访问的 RAM，例如：
 
-- `const char* / char*`
+```ld
+.RAM_D2 (NOLOAD) :
+{
+  . = ALIGN(32);
+  KEEP(*(.RAM_D2))
+  KEEP(*(.RAM_D2*))
+  . = ALIGN(32);
+} >RAM_D2
+```
+
+如果 H7 工程启用了 D-Cache，DMA 缓冲区一致性仍可能需要 MPU non-cacheable 配置或显式 cache 维护。
+
+---
+
+## API
+
+### 日志宏
+
+```c
+YORULOG_LogError("fatal");
+YORULOG_LogWarn("warn");
+YORULOG_LogInfo("info");
+YORULOG_LogDebug("debug");
+YORULOG_LogTrace("trace");
+```
+
+每个宏接收一个自动识别类型的参数：
+
+- `const char*` / `char*`
 - `char`
-- 整数类型
+- 有符号 / 无符号整数
 - 指针
 
----
-
-### 无前缀的原始输出
+### 原始输出
 
 ```c
-print("x=");
-print(123);
-println("done");
+YORULOG_Print("x=");
+YORULOG_Print(123);
+YORULOG_Println("done");
+```
+
+### 运行时设置日志等级
+
+```c
+YORULOG_SetLevel(YORULOG_LEVEL_INFO);
+```
+
+### 手动刷新
+
+```c
+YORULOG_Flush();
 ```
 
 ---
 
-### 动态设置日志等级
+## 配置宏
 
-```c
-log_set_level(LOG_INFO);  // DEBUG / TRACE 将被过滤
-```
-
----
-
-## 配置宏一览
-
-在 `#include "stlog.h"` 之前定义：
+在 `#include "yorulog.h"` 之前定义。
 
 | 宏 | 默认值 | 说明 |
 |---|---:|---|
-| `STLOG_ENABLE` | `1` | 总开关 |
-| `STLOG_MINI` | `0` | `1` = MINI，`0` = FULL |
-| `STLOG_TX_BUF_SIZE` | `512` | FULL 模式环形缓冲大小 |
-| `STLOG_DROP_NEW_ON_FULL` | `1` | FULL 模式满时丢弃新数据 |
-| `STLOG_DEFAULT_LEVEL` | `LOG_INFO` | 默认日志等级 |
-| `STLOG_TIMESTAMP` | `0` | 启用时间戳 |
-| `STLOG_NOW_MS()` | `HAL_GetTick()` | 自定义时间源 |
-| `STLOG_CRLF` | `1` | 使用 `\r\n` |
-| `STLOG_PREFIX_E/W/I/D/T` | `"[E] "` 等 | 日志前缀 |
-| `STLOG_FORCE_BLOCKING_EW` | `1` | ERROR/WARN 强制阻塞刷新 |
+| `YORULOG_ENABLE` | `1` | 总开关 |
+| `YORULOG_MINI` | `0` | `1` = MINI，`0` = FULL |
+| `YORULOG_TX_BUF_SIZE` | `512` | FULL 模式环形缓冲区大小 |
+| `YORULOG_DEFAULT_LEVEL` | `4` | 启动日志等级，即 `TRACE` |
+| `YORULOG_TIMESTAMP` | `0` | 前缀时间戳 `[ms]` |
+| `YORULOG_NOW_MS()` | `HAL_GetTick()` | 自定义时间源 |
+| `YORULOG_CRLF` | `1` | 使用 `\r\n` |
+| `YORULOG_DROP_NEW_ON_FULL` | `0` | FULL 模式下，在非阻塞策略里覆盖旧数据而不是丢新数据 |
+| `YORULOG_BLOCK_ON_FULL` | `1` | FULL 模式下，缓冲区满时阻塞/刷新 |
+| `YORULOG_FORCE_BLOCKING_EW` | `1` | `ERROR/WARN` 强制刷新/阻塞 |
+| `YORULOG_DMA_SECTION` | H7 上默认为 `".RAM_D2"` | DMA 缓冲区 section 名 |
+| `YORULOG_PREFIX_E/W/I/D/T` | `"[E] "` 等 | 各级别前缀 |
+
+当前版本仍保留兼容层，旧的 `STLOG_*` 宏以及 `stlog_*` / `log*` API 仍可继续使用。
 
 ---
 
-## 使用注意事项
+## 行为说明
 
 ### MINI 模式
-- 所有输出均为 **阻塞式 UART 发送**
-- 在高频日志或中断中可能会明显拖慢系统（这是预期行为）
-- 适合量产 / 极限资源场景
+
+- 始终使用阻塞式 UART 发送
+- 体积最小，逻辑最简单
+- 适合资源非常紧张的量产固件
 
 ### FULL 模式
-- 使用环形缓冲，尽量避免阻塞
-- 自动识别 DMA TX
-- **STM32H7 + D-Cache** 场景下，需注意 DMA 缓冲区的 Cache 一致性（建议放在 non-cacheable 区域或使用 MPU）
+
+- 使用环形缓冲
+- 存在 DMA TX 时会自动切换到 DMA 发送
+- 默认策略优先保证 **日志完整性**，而不是追求峰值下完全不阻塞
+- 按当前默认配置，缓冲区满时会阻塞/刷新，而不是静默截断输出
+
+---
+
+## 实测体积开销
+
+测试平台：**STM32H743**，使用本仓库当前测试工程的 **Release** 预设。  
+编译条件：
+
+- `-Os -g0`
+- `--specs=nano.specs`
+- `-ffunction-sections -fdata-sections -Wl,--gc-sections`
+
+### 基线（仅 HAL + USART1）
+
+| 资源 | 占用 |
+|---|---:|
+| Flash | 15536 B |
+| DTCMRAM | 1856 B |
+| RAM_D2 | 0 B |
+| `arm-none-eabi-size` dec | 17376 |
+
+### MINI 模式（仅接入库，调用 `YORULOG_Init()`）
+
+| 资源 | 占用 | 增量 |
+|---|---:|---:|
+| Flash | 15560 B | +24 B |
+| DTCMRAM | 1864 B | +8 B |
+| RAM_D2 | 512 B | +512 B |
+| `arm-none-eabi-size` dec | 17920 | +544 |
+
+### FULL 模式（接入库，接好 DMA 回调，不运行自测输出）
+
+| 资源 | 占用 | 增量 |
+|---|---:|---:|
+| Flash | 17092 B | +1556 B |
+| DTCMRAM | 1888 B | +32 B |
+| RAM_D2 | 512 B | +512 B |
+| `arm-none-eabi-size` dec | 19476 | +2100 |
+
+### FULL 模式 + `main.c` 自带自测
+
+| 资源 | 占用 | 相对基线增量 |
+|---|---:|---:|
+| Flash | 18532 B | +2996 B |
+| DTCMRAM | 1888 B | +32 B |
+| RAM_D2 | 512 B | +512 B |
+| `arm-none-eabi-size` dec | 20916 | +3540 |
+
+说明：
+
+- 自测字符串和演示逻辑本身，额外增加了大约 `1440 B` Flash。
+- 按当前实现，`YORULOG_DEFINE_GLOBALS` 仍会保留全局 `yorulog_tx_buf`，所以 `MINI` 模式下也会看到 `512 B` 的 `RAM_D2` 占用。
