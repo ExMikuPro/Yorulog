@@ -170,7 +170,16 @@ Your linker script needs to place that section into DMA-accessible RAM, for exam
 } >RAM_D2
 ```
 
-If D-Cache is enabled in the project, you also need to consider DMA buffer coherency. You can use MPU to mark the region as non-cacheable, or maintain the cache manually before and after DMA transfers.
+If D-Cache is enabled in the project, you also need to consider DMA buffer coherency.
+
+The current release provides a default cache-clean step before starting DMA TX on H7/F7-class targets:
+
+```c
+#define YORULOG_DMA_CACHE_CLEAN 1
+#define YORULOG_DMA_CACHE_LINE_SIZE 32
+```
+
+You can still use MPU to mark the DMA region as non-cacheable, which is often the cleanest setup on STM32H7.
 
 ---
 
@@ -207,6 +216,15 @@ YORULOG_Println("done");
 
 `YORULOG_Print()` does not append a newline.
 `YORULOG_Println()` appends a newline after the output.
+
+For long menu text, shell help, or other output where line completeness matters more than non-blocking behavior, use the long-text path:
+
+```c
+YORULOG_PrintLong("help: ");
+YORULOG_PrintLongln("show all commands");
+```
+
+In FULL mode, the long-text APIs flush pending buffered logs first and then use blocking UART transmit for the long text itself. In MINI mode, they behave like the normal blocking path.
 
 ---
 
@@ -249,6 +267,8 @@ All configuration macros must be defined before including `yorulog.h`.
 | `YORULOG_BLOCK_ON_FULL` | `1` | whether to block or flush when the buffer is full |
 | `YORULOG_FORCE_BLOCKING_EW` | `1` | whether `ERROR` / `WARN` should force a flush |
 | `YORULOG_DMA_SECTION` | `".RAM_D2"` on H7 | section used for the DMA buffer |
+| `YORULOG_DMA_CACHE_CLEAN` | `1` on H7/F7-class targets | clean D-Cache before DMA TX |
+| `YORULOG_DMA_CACHE_LINE_SIZE` | `32` | cache line size used for DMA clean alignment |
 | `YORULOG_PREFIX_E/W/I/D/T` | `"[E] "` etc | custom level prefixes |
 
 The current release still keeps a compatibility layer, so the old `STLOG_*` macros and `stlog_*` / `log*` APIs can still be used.
@@ -284,6 +304,12 @@ Suitable for:
 * debug phases with heavier log output
 * projects that want to reduce UART blocking time
 * firmware that already has UART TX DMA configured
+* shell-style features such as Yorush, command help, and longer menu text
+
+When used together with Yorush or other shell-style middleware:
+
+* `MINI` still works correctly, but long help text is fully blocking and may pause the main loop briefly.
+* `FULL` is usually the better balance if the project can spare the extra RAM.
 
 ---
 
@@ -358,3 +384,11 @@ Interpretation:
 * In this benchmark, the string path is about `38 cycles/byte`, while integer-to-string output is noticeably more expensive.
 * End-to-end throughput is mainly limited by the `115200` UART line rate, not by the logger itself.
 * The example test project now includes both a TIM-based `1 us` timing benchmark and a DWT cycle counter benchmark, which makes it easier to compare time-in-us and CPU-cycle cost across STM32 targets.
+
+---
+
+## License
+
+This project is licensed under the MIT License.
+
+See the [LICENSE](./LICENSE) file for details.

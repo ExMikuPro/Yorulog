@@ -170,7 +170,16 @@ STM32H7 的内存结构比较特殊。很多工程会把默认的 `.data` / `.bs
 } >RAM_D2
 ```
 
-如果工程启用了 D-Cache，还需要注意 DMA 缓冲区一致性问题。可以使用 MPU 把对应区域配置为 non-cacheable，或者在发送前后手动维护 cache。
+如果工程启用了 D-Cache，还需要注意 DMA 缓冲区一致性问题。
+
+当前版本在 H7/F7 这类 Cortex-M7 目标上，默认会在启动 DMA TX 之前做一次 cache clean：
+
+```c
+#define YORULOG_DMA_CACHE_CLEAN 1
+#define YORULOG_DMA_CACHE_LINE_SIZE 32
+```
+
+当然，你仍然可以使用 MPU 把 DMA 区域配置为 non-cacheable；在 STM32H7 工程里，这通常也是更省心的做法。
 
 ---
 
@@ -207,6 +216,15 @@ YORULOG_Println("done");
 
 `YORULOG_Print()` 不会自动换行。
 `YORULOG_Println()` 会在输出后追加换行。
+
+如果是帮助菜单、shell 提示、长说明文本这类更在意“整行完整性”的输出，建议使用长文本路径：
+
+```c
+YORULOG_PrintLong("help: ");
+YORULOG_PrintLongln("show all commands");
+```
+
+在 FULL 模式下，长文本 API 会先把已有缓冲日志刷新出去，再对这段长文本本身使用阻塞式 UART 发送；在 MINI 模式下，它的行为和普通阻塞发送一致。
 
 ---
 
@@ -249,6 +267,8 @@ YORULOG_Flush();
 | `YORULOG_BLOCK_ON_FULL`     |                `1` | 缓冲区满时是否阻塞或刷新                |
 | `YORULOG_FORCE_BLOCKING_EW` |                `1` | `ERROR` / `WARN` 是否强制刷新     |
 | `YORULOG_DMA_SECTION`       | H7 默认为 `".RAM_D2"` | DMA 缓冲区所在 section           |
+| `YORULOG_DMA_CACHE_CLEAN`   | H7/F7 类目标默认启用       | DMA TX 前是否执行 D-Cache clean   |
+| `YORULOG_DMA_CACHE_LINE_SIZE` |             `32` | DMA cache clean 对齐使用的 cache line 大小 |
 | `YORULOG_PREFIX_E/W/I/D/T`  |         `"[E] "` 等 | 自定义日志等级前缀                   |
 
 当前版本仍保留兼容层，旧的 `STLOG_*` 宏，以及 `stlog_*` / `log*` API 仍然可以继续使用。
@@ -284,6 +304,12 @@ FULL 模式使用环形缓冲区。
 * 日志输出较多的调试阶段
 * 希望减少 UART 阻塞时间的项目
 * 已经配置 UART TX DMA 的工程
+* 需要配合 Yorush、命令帮助、较长菜单文本的场景
+
+如果要和 Yorush 这类 shell 中间件一起使用：
+
+* `MINI` 可以正常工作，但长帮助文本会完全阻塞发送，主循环可能会短暂停顿。
+* 如果工程可以接受额外 RAM，`FULL` 往往是更平衡的选择。
 
 ---
 
@@ -404,3 +430,11 @@ Yorulog 适合以下场景：
 Yorulog 不是一个完整的通用日志框架。
 
 它更像是一个适合直接塞进 STM32 工程里的小工具：简单、可控、占用低，主要解决“我需要一点可靠的 UART 日志，但不想把 `printf` 搬进来”的问题。
+
+---
+
+## 开源协议
+
+本项目使用 MIT License 开源。
+
+详细内容见 [LICENSE](./LICENSE) 文件。
