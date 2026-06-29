@@ -213,6 +213,27 @@ extern "C" {
 #define YORULOG_SECTION_ATTR(name)
 #endif
 
+/* D-Cache maintenance policy for DMA TX buffers.
+ * On H7/F7-class Cortex-M7 parts, DMA may read stale data if the TX buffer lives in cacheable RAM.
+ * Keep this enabled by default on those platforms unless the application guarantees a non-cacheable DMA region.
+ */
+#ifndef YORULOG_DMA_CACHE_CLEAN
+  #ifdef STLOG_DMA_CACHE_CLEAN
+    #define YORULOG_DMA_CACHE_CLEAN STLOG_DMA_CACHE_CLEAN
+  #else
+    #define YORULOG_DMA_CACHE_CLEAN YORULOG_HAS_DCACHE_RISK
+  #endif
+#endif
+
+/* Cache line size used by SCB_CleanDCache_by_Addr alignment. */
+#ifndef YORULOG_DMA_CACHE_LINE_SIZE
+  #ifdef STLOG_DMA_CACHE_LINE_SIZE
+    #define YORULOG_DMA_CACHE_LINE_SIZE STLOG_DMA_CACHE_LINE_SIZE
+  #else
+    #define YORULOG_DMA_CACHE_LINE_SIZE 32u
+  #endif
+#endif
+
 /* Buffer-full policy:
  * 1 = drop new data (non-blocking, most stable)
  * 0 = overwrite old data (more real-time)
@@ -327,6 +348,12 @@ extern "C" {
 #endif
 #ifndef STLOG_DROP_NEW_ON_FULL
 #define STLOG_DROP_NEW_ON_FULL YORULOG_DROP_NEW_ON_FULL
+#endif
+#ifndef STLOG_DMA_CACHE_CLEAN
+#define STLOG_DMA_CACHE_CLEAN YORULOG_DMA_CACHE_CLEAN
+#endif
+#ifndef STLOG_DMA_CACHE_LINE_SIZE
+#define STLOG_DMA_CACHE_LINE_SIZE YORULOG_DMA_CACHE_LINE_SIZE
 #endif
 #ifndef STLOG_BLOCK_ON_FULL
 #define STLOG_BLOCK_ON_FULL YORULOG_BLOCK_ON_FULL
@@ -470,6 +497,22 @@ static inline void stlog_nl_(void)
 #endif
 }
 
+static inline void stlog_write_cstr_long_(const char *s)
+{
+#if STLOG_ENABLE
+    stlog_write_cstr_(s);
+#else
+    (void)s;
+#endif
+}
+
+static inline void stlog_nl_long_(void)
+{
+#if STLOG_ENABLE
+    stlog_nl_();
+#endif
+}
+
 static inline void stlog_char_(char c)
 {
 #if STLOG_ENABLE
@@ -604,6 +647,60 @@ static inline unsigned stlog__seg_len_(const YORULOG_HandleTypeDef *l)
     return (h > t) ? (h - t) : ((unsigned)STLOG_TX_BUF_SIZE - t);
 }
 
+static inline void stlog__prepare_dma_tx_(const unsigned char *ptr, unsigned len)
+{
+#if STLOG_ENABLE && STLOG_DMA_CACHE_CLEAN
+    if ((ptr == (const unsigned char *)0) || (len == 0u)) return;
+
+    {
+        const uintptr_t line_size = (uintptr_t)STLOG_DMA_CACHE_LINE_SIZE;
+        if (line_size == 0u) return;
+        const uintptr_t start = (uintptr_t)ptr;
+        const uintptr_t aligned_start = start & ~(line_size - 1u);
+        const uintptr_t aligned_end = (start + (uintptr_t)len + line_size - 1u) & ~(line_size - 1u);
+
+        if (aligned_end > aligned_start) {
+            SCB_CleanDCache_by_Addr((uint32_t *)aligned_start, (int32_t)(aligned_end - aligned_start));
+        }
+    }
+#else
+    (void)ptr;
+    (void)len;
+#endif
+}
+
+static inline void stlog__tx_blocking_bytes_(const unsigned char *buf, unsigned len)
+{
+#if STLOG_ENABLE
+    if (!buf || (len == 0u) || !g_stlog.huart) return;
+
+    while (len != 0u) {
+        uint16_t chunk = (uint16_t)((len > 0xFFFFu) ? 0xFFFFu : len);
+        if (HAL_UART_Transmit(g_stlog.huart, (uint8_t *)buf, chunk, 0xFFFFu) != HAL_OK) {
+            break;
+        }
+        buf += chunk;
+        len -= (unsigned)chunk;
+    }
+#else
+    (void)buf;
+    (void)len;
+#endif
+}
+
+static inline unsigned stlog__cstr_len_(const char *s)
+{
+    unsigned len = 0u;
+
+    if (!s) return 0u;
+
+    while (s[len] != '\0') {
+        ++len;
+    }
+
+    return len;
+}
+
 static inline void stlog__flush_blocking_(YORULOG_HandleTypeDef *l);
 
 static inline void stlog__push_(YORULOG_HandleTypeDef *l, unsigned char c)
@@ -675,6 +772,7 @@ static inline void stlog__kick_(YORULOG_HandleTypeDef *l)
         l->dma_tail = t;
         l->dma_len = len;
         l->tx_busy = 1u;
+        stlog__prepare_dma_tx_(&l->tx_buf[t], len);
         if (HAL_UART_Transmit_DMA(hu, (uint8_t*)&l->tx_buf[t], (uint16_t)len) != HAL_OK) {
             l->tx_busy = 0u;
             l->dma_len = 0u;
@@ -722,6 +820,23 @@ static inline void stlog_write_cstr_(const char *s)
 #endif
 }
 
+static inline void stlog_write_cstr_long_(const char *s)
+{
+#if STLOG_ENABLE
+    unsigned len;
+
+    if (!s) return;
+
+    len = stlog__cstr_len_(s);
+#if !STLOG_MINI
+    stlog__flush_blocking_(&g_stlog);
+#endif
+    stlog__tx_blocking_bytes_((const unsigned char *)s, len);
+#else
+    (void)s;
+#endif
+}
+
 static inline void stlog_nl_(void)
 {
 #if STLOG_ENABLE
@@ -730,6 +845,19 @@ static inline void stlog_nl_(void)
 #endif
     stlog__push_(&g_stlog, '\n');
     stlog__kick_(&g_stlog);
+#endif
+}
+
+static inline void stlog_nl_long_(void)
+{
+#if STLOG_ENABLE
+#if STLOG_CRLF
+    static const unsigned char nl[] = "\r\n";
+    stlog__tx_blocking_bytes_(nl, 2u);
+#else
+    static const unsigned char nl[] = "\n";
+    stlog__tx_blocking_bytes_(nl, 1u);
+#endif
 #endif
 }
 
@@ -906,6 +1034,39 @@ static inline void YORULOG_Flush(void)
 static inline void stlog_flush(void)
 {
     YORULOG_Flush();
+}
+
+static inline void YORULOG_PrintLong(const char *s)
+{
+#if STLOG_ENABLE
+    YORULOG_LOCK();
+    stlog_write_cstr_long_(s ? s : "");
+    YORULOG_UNLOCK();
+#else
+    (void)s;
+#endif
+}
+
+static inline void YORULOG_PrintLongln(const char *s)
+{
+#if STLOG_ENABLE
+    YORULOG_LOCK();
+    stlog_write_cstr_long_(s ? s : "");
+    stlog_nl_long_();
+    YORULOG_UNLOCK();
+#else
+    (void)s;
+#endif
+}
+
+static inline void stlog_print_long(const char *s)
+{
+    YORULOG_PrintLong(s);
+}
+
+static inline void stlog_print_longln(const char *s)
+{
+    YORULOG_PrintLongln(s);
 }
 
 /* =========================================================
