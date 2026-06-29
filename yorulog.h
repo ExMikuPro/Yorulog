@@ -9,11 +9,6 @@
  *   #include "yorulog.h"
  */
 #ifndef YORULOG_HAL_HEADER
-  #ifdef STLOG_HAL_HEADER
-    #define YORULOG_HAL_HEADER STLOG_HAL_HEADER
-  #endif
-#endif
-#ifndef YORULOG_HAL_HEADER
   #if defined(__has_include)
     #if __has_include("stm32h7xx_hal.h")
       #define YORULOG_HAL_HEADER "stm32h7xx_hal.h"
@@ -61,11 +56,7 @@ extern "C" {
 
 /* Master logger switch: 1 = enabled, 0 = disabled */
 #ifndef YORULOG_ENABLE
-  #ifdef STLOG_ENABLE
-    #define YORULOG_ENABLE STLOG_ENABLE
-  #else
-    #define YORULOG_ENABLE 1
-  #endif
+  #define YORULOG_ENABLE 1
 #endif
 
 /* Mode selection:
@@ -73,84 +64,44 @@ extern "C" {
  * 1 = MINI mode (no buffer, direct blocking transmit, ultra-low Flash/RAM usage)
  */
 #ifndef YORULOG_MINI
-  #ifdef STLOG_MINI
-    #define YORULOG_MINI STLOG_MINI
-  #else
-    #define YORULOG_MINI 0
-  #endif
+  #define YORULOG_MINI 0
 #endif
 
 /* Newline mode: 1 = output \r\n (Windows style), 0 = output only \n */
 #ifndef YORULOG_CRLF
-  #ifdef STLOG_CRLF
-    #define YORULOG_CRLF STLOG_CRLF
-  #else
-    #define YORULOG_CRLF 1
-  #endif
+  #define YORULOG_CRLF 1
 #endif
 
 /* Timestamp switch: 1 = prepend [tick_ms] using HAL_GetTick */
 #ifndef YORULOG_TIMESTAMP
-  #ifdef STLOG_TIMESTAMP
-    #define YORULOG_TIMESTAMP STLOG_TIMESTAMP
-  #else
-    #define YORULOG_TIMESTAMP 0
-  #endif
+  #define YORULOG_TIMESTAMP 0
 #endif
 
 /* Default log level (0~4): 0=ERROR, 1=WARN, 2=INFO, 3=DEBUG, 4=TRACE */
 #ifndef YORULOG_DEFAULT_LEVEL
-  #ifdef STLOG_DEFAULT_LEVEL
-    #define YORULOG_DEFAULT_LEVEL STLOG_DEFAULT_LEVEL
-  #else
-    #define YORULOG_DEFAULT_LEVEL 4 /* TRACE */
-  #endif
+  #define YORULOG_DEFAULT_LEVEL 4 /* TRACE */
 #endif
 
 /* Custom log prefixes */
 #ifndef YORULOG_PREFIX_E
-  #ifdef STLOG_PREFIX_E
-    #define YORULOG_PREFIX_E STLOG_PREFIX_E
-  #else
-    #define YORULOG_PREFIX_E "[E] "
-  #endif
+  #define YORULOG_PREFIX_E "[E] "
 #endif
 #ifndef YORULOG_PREFIX_W
-  #ifdef STLOG_PREFIX_W
-    #define YORULOG_PREFIX_W STLOG_PREFIX_W
-  #else
-    #define YORULOG_PREFIX_W "[W] "
-  #endif
+  #define YORULOG_PREFIX_W "[W] "
 #endif
 #ifndef YORULOG_PREFIX_I
-  #ifdef STLOG_PREFIX_I
-    #define YORULOG_PREFIX_I STLOG_PREFIX_I
-  #else
-    #define YORULOG_PREFIX_I "[I] "
-  #endif
+  #define YORULOG_PREFIX_I "[I] "
 #endif
 #ifndef YORULOG_PREFIX_D
-  #ifdef STLOG_PREFIX_D
-    #define YORULOG_PREFIX_D STLOG_PREFIX_D
-  #else
-    #define YORULOG_PREFIX_D "[D] "
-  #endif
+  #define YORULOG_PREFIX_D "[D] "
 #endif
 #ifndef YORULOG_PREFIX_T
-  #ifdef STLOG_PREFIX_T
-    #define YORULOG_PREFIX_T STLOG_PREFIX_T
-  #else
-    #define YORULOG_PREFIX_T "[T] "
-  #endif
+  #define YORULOG_PREFIX_T "[T] "
 #endif
 
 /* FULL mode ring buffer size in bytes; smaller values save RAM */
 #ifndef YORULOG_TX_BUF_SIZE
-  #ifdef STLOG_TX_BUF_SIZE
-    #define YORULOG_TX_BUF_SIZE STLOG_TX_BUF_SIZE
-  #else
-    #define YORULOG_TX_BUF_SIZE 512u
-  #endif
+  #define YORULOG_TX_BUF_SIZE 512u
 #endif
 
 /* =========================================================
@@ -198,11 +149,7 @@ extern "C" {
  * Therefore the transmit buffer is placed into a DMA-accessible RAM_D2 section by default.
  */
 #ifndef YORULOG_DMA_SECTION
-  #ifdef STLOG_DMA_SECTION
-    #define YORULOG_DMA_SECTION STLOG_DMA_SECTION
-  #else
-    #define YORULOG_DMA_SECTION ".RAM_D2"
-  #endif
+  #define YORULOG_DMA_SECTION ".RAM_D2"
 #endif
 
 #if defined(__APPLE__)
@@ -218,20 +165,12 @@ extern "C" {
  * Keep this enabled by default on those platforms unless the application guarantees a non-cacheable DMA region.
  */
 #ifndef YORULOG_DMA_CACHE_CLEAN
-  #ifdef STLOG_DMA_CACHE_CLEAN
-    #define YORULOG_DMA_CACHE_CLEAN STLOG_DMA_CACHE_CLEAN
-  #else
-    #define YORULOG_DMA_CACHE_CLEAN YORULOG_HAS_DCACHE_RISK
-  #endif
+  #define YORULOG_DMA_CACHE_CLEAN YORULOG_HAS_DCACHE_RISK
 #endif
 
 /* Cache line size used by SCB_CleanDCache_by_Addr alignment. */
 #ifndef YORULOG_DMA_CACHE_LINE_SIZE
-  #ifdef STLOG_DMA_CACHE_LINE_SIZE
-    #define YORULOG_DMA_CACHE_LINE_SIZE STLOG_DMA_CACHE_LINE_SIZE
-  #else
-    #define YORULOG_DMA_CACHE_LINE_SIZE 32u
-  #endif
+  #define YORULOG_DMA_CACHE_LINE_SIZE 32u
 #endif
 
 /* Buffer-full policy:
@@ -239,11 +178,7 @@ extern "C" {
  * 0 = overwrite old data (more real-time)
  */
 #ifndef YORULOG_DROP_NEW_ON_FULL
-  #ifdef STLOG_DROP_NEW_ON_FULL
-    #define YORULOG_DROP_NEW_ON_FULL STLOG_DROP_NEW_ON_FULL
-  #else
-    #define YORULOG_DROP_NEW_ON_FULL 0
-  #endif
+  #define YORULOG_DROP_NEW_ON_FULL 0
 #endif
 
 /* Block when the buffer is full until space becomes available:
@@ -253,11 +188,7 @@ extern "C" {
  * Recommended for DMA logger setups such as STM32H7 when using a small buffer.
  */
 #ifndef YORULOG_BLOCK_ON_FULL
-  #ifdef STLOG_BLOCK_ON_FULL
-    #define YORULOG_BLOCK_ON_FULL STLOG_BLOCK_ON_FULL
-  #else
-    #define YORULOG_BLOCK_ON_FULL 1
-  #endif
+  #define YORULOG_BLOCK_ON_FULL 1
 #endif
 
 /* Force blocking transmit for ERROR/WARN logs (recommended):
@@ -267,11 +198,7 @@ extern "C" {
  * - MINI mode: already blocking by design
  */
 #ifndef YORULOG_FORCE_BLOCKING_EW
-  #ifdef STLOG_FORCE_BLOCKING_EW
-    #define YORULOG_FORCE_BLOCKING_EW STLOG_FORCE_BLOCKING_EW
-  #else
-    #define YORULOG_FORCE_BLOCKING_EW 1
-  #endif
+  #define YORULOG_FORCE_BLOCKING_EW 1
 #endif
 
 /* Concurrency protection lock to avoid mixed output from interrupts/threads.
@@ -280,95 +207,15 @@ extern "C" {
  *   #define YORULOG_UNLOCK() if(!pm) __enable_irq();
  */
 #ifndef YORULOG_LOCK
-  #ifdef STLOG_LOCK
-    #define YORULOG_LOCK() STLOG_LOCK()
-  #else
-    #define YORULOG_LOCK()   do{}while(0)
-  #endif
+  #define YORULOG_LOCK()   do{}while(0)
 #endif
 #ifndef YORULOG_UNLOCK
-  #ifdef STLOG_UNLOCK
-    #define YORULOG_UNLOCK() STLOG_UNLOCK()
-  #else
-    #define YORULOG_UNLOCK() do{}while(0)
-  #endif
+  #define YORULOG_UNLOCK() do{}while(0)
 #endif
 
 /* Timestamp source; can be overridden instead of HAL_GetTick */
 #ifndef YORULOG_NOW_MS
-  #ifdef STLOG_NOW_MS
-    #define YORULOG_NOW_MS() STLOG_NOW_MS()
-  #else
-    #define YORULOG_NOW_MS() ((unsigned)HAL_GetTick())
-  #endif
-#endif
-
-/* Backward-compatible config aliases */
-#ifndef STLOG_ENABLE
-#define STLOG_ENABLE YORULOG_ENABLE
-#endif
-#ifndef STLOG_MINI
-#define STLOG_MINI YORULOG_MINI
-#endif
-#ifndef STLOG_CRLF
-#define STLOG_CRLF YORULOG_CRLF
-#endif
-#ifndef STLOG_TIMESTAMP
-#define STLOG_TIMESTAMP YORULOG_TIMESTAMP
-#endif
-#ifndef STLOG_DEFAULT_LEVEL
-#define STLOG_DEFAULT_LEVEL YORULOG_DEFAULT_LEVEL
-#endif
-#ifndef STLOG_PREFIX_E
-#define STLOG_PREFIX_E YORULOG_PREFIX_E
-#endif
-#ifndef STLOG_PREFIX_W
-#define STLOG_PREFIX_W YORULOG_PREFIX_W
-#endif
-#ifndef STLOG_PREFIX_I
-#define STLOG_PREFIX_I YORULOG_PREFIX_I
-#endif
-#ifndef STLOG_PREFIX_D
-#define STLOG_PREFIX_D YORULOG_PREFIX_D
-#endif
-#ifndef STLOG_PREFIX_T
-#define STLOG_PREFIX_T YORULOG_PREFIX_T
-#endif
-#ifndef STLOG_TX_BUF_SIZE
-#define STLOG_TX_BUF_SIZE YORULOG_TX_BUF_SIZE
-#endif
-#ifndef STLOG_NEEDS_DMA_ACCESSIBLE_BUFFER
-#define STLOG_NEEDS_DMA_ACCESSIBLE_BUFFER YORULOG_NEEDS_DMA_ACCESSIBLE_BUFFER
-#endif
-#ifndef STLOG_HAS_DCACHE_RISK
-#define STLOG_HAS_DCACHE_RISK YORULOG_HAS_DCACHE_RISK
-#endif
-#ifndef STLOG_DMA_SECTION
-#define STLOG_DMA_SECTION YORULOG_DMA_SECTION
-#endif
-#ifndef STLOG_DROP_NEW_ON_FULL
-#define STLOG_DROP_NEW_ON_FULL YORULOG_DROP_NEW_ON_FULL
-#endif
-#ifndef STLOG_DMA_CACHE_CLEAN
-#define STLOG_DMA_CACHE_CLEAN YORULOG_DMA_CACHE_CLEAN
-#endif
-#ifndef STLOG_DMA_CACHE_LINE_SIZE
-#define STLOG_DMA_CACHE_LINE_SIZE YORULOG_DMA_CACHE_LINE_SIZE
-#endif
-#ifndef STLOG_BLOCK_ON_FULL
-#define STLOG_BLOCK_ON_FULL YORULOG_BLOCK_ON_FULL
-#endif
-#ifndef STLOG_FORCE_BLOCKING_EW
-#define STLOG_FORCE_BLOCKING_EW YORULOG_FORCE_BLOCKING_EW
-#endif
-#ifndef STLOG_LOCK
-#define STLOG_LOCK() YORULOG_LOCK()
-#endif
-#ifndef STLOG_UNLOCK
-#define STLOG_UNLOCK() YORULOG_UNLOCK()
-#endif
-#ifndef STLOG_NOW_MS
-#define STLOG_NOW_MS() YORULOG_NOW_MS()
+  #define YORULOG_NOW_MS() ((unsigned)HAL_GetTick())
 #endif
 
 /* =========================================================
@@ -386,7 +233,7 @@ typedef struct {
     UART_HandleTypeDef *huart;
     volatile YORULOG_LevelTypeDef level;
 
-#if !STLOG_MINI
+#if !YORULOG_MINI
     volatile unsigned head;
     volatile unsigned tail;
     volatile unsigned tx_busy;
@@ -408,21 +255,21 @@ typedef YORULOG_HandleTypeDef stlog_t;
 /* Global singleton storage.
  * Define YORULOG_DEFINE_GLOBALS in exactly one .c file before including yorulog.h.
  */
-#if defined(YORULOG_DEFINE_GLOBALS) || defined(STLOG_DEFINE_GLOBALS)
+#if defined(YORULOG_DEFINE_GLOBALS)
 YORULOG_HandleTypeDef hYorulog;
-#if !STLOG_MINI
+#if !YORULOG_MINI
 YORULOG_SECTION_ATTR(YORULOG_DMA_SECTION) __attribute__((aligned(32)))
 unsigned char yorulog_tx_buf[YORULOG_TX_BUF_SIZE];
 #endif
 #else
 extern YORULOG_HandleTypeDef hYorulog;
-#if !STLOG_MINI
+#if !YORULOG_MINI
 extern unsigned char yorulog_tx_buf[YORULOG_TX_BUF_SIZE];
 #endif
 #endif
 
 #define g_stlog hYorulog
-#if !STLOG_MINI
+#if !YORULOG_MINI
 #define g_stlog_tx_buf yorulog_tx_buf
 #endif
 
@@ -433,9 +280,9 @@ extern unsigned char yorulog_tx_buf[YORULOG_TX_BUF_SIZE];
 static inline void YORULOG_Init(UART_HandleTypeDef *huart)
 {
     g_stlog.huart = huart;
-    g_stlog.level = (YORULOG_LevelTypeDef)STLOG_DEFAULT_LEVEL;
+    g_stlog.level = (YORULOG_LevelTypeDef)YORULOG_DEFAULT_LEVEL;
 
-#if !STLOG_MINI
+#if !YORULOG_MINI
     g_stlog.head = 0u;
     g_stlog.tail = 0u;
     g_stlog.tx_busy = 0u;
@@ -466,11 +313,11 @@ static inline unsigned stlog__lvl_enabled_(YORULOG_LevelTypeDef lv)
 }
 
 /* ---------- MINI Mode: Direct blocking transmission ---------- */
-#if STLOG_MINI
+#if YORULOG_MINI
 
 static inline void stlog__putc_(char c)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     (void)HAL_UART_Transmit(g_stlog.huart, (uint8_t*)&c, 1u, 0xFFFFu);
 #else
     (void)c;
@@ -479,7 +326,7 @@ static inline void stlog__putc_(char c)
 
 static inline void stlog_write_cstr_(const char *s)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     if (!s) return;
     while (*s) stlog__putc_(*s++);
 #else
@@ -489,8 +336,8 @@ static inline void stlog_write_cstr_(const char *s)
 
 static inline void stlog_nl_(void)
 {
-#if STLOG_ENABLE
-#if STLOG_CRLF
+#if YORULOG_ENABLE
+#if YORULOG_CRLF
     stlog__putc_('\r');
 #endif
     stlog__putc_('\n');
@@ -499,7 +346,7 @@ static inline void stlog_nl_(void)
 
 static inline void stlog_write_cstr_long_(const char *s)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     stlog_write_cstr_(s);
 #else
     (void)s;
@@ -508,14 +355,14 @@ static inline void stlog_write_cstr_long_(const char *s)
 
 static inline void stlog_nl_long_(void)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     stlog_nl_();
 #endif
 }
 
 static inline void stlog_char_(char c)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     stlog__putc_(c);
 #else
     (void)c;
@@ -524,7 +371,7 @@ static inline void stlog_char_(char c)
 
 static inline void stlog_u32_(unsigned v)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     char buf[10];
     unsigned i = 0u;
 
@@ -542,7 +389,7 @@ static inline void stlog_u32_(unsigned v)
 
 static inline void stlog_u64_(unsigned long long v)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     char buf[20];
     unsigned i = 0u;
 
@@ -560,7 +407,7 @@ static inline void stlog_u64_(unsigned long long v)
 
 static inline void stlog_i32_(int v)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     if (v < 0) {
         stlog__putc_('-');
         unsigned uv = (unsigned)(0u - (unsigned)v); /* Safe for INT_MIN */
@@ -575,7 +422,7 @@ static inline void stlog_i32_(int v)
 
 static inline void stlog_i64_(long long v)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     if (v < 0ll) {
         stlog__putc_('-');
         stlog_u64_(0ull - (unsigned long long)v);
@@ -589,7 +436,7 @@ static inline void stlog_i64_(long long v)
 
 static inline void stlog_hex_u32_(unsigned v)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     for (int i = 7; i >= 0; --i) {
         unsigned nib = (v >> (unsigned)(i * 4)) & 0xFu;
         char c = (char)((nib < 10u) ? ('0' + nib) : ('A' + (nib - 10u)));
@@ -602,7 +449,7 @@ static inline void stlog_hex_u32_(unsigned v)
 
 static inline void stlog_ptr_(const void *p)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     stlog_write_cstr_("0x");
     for (int i = (int)(sizeof(void*) * 2u) - 1; i >= 0; --i) {
         unsigned nib = (unsigned)(((unsigned long long)(unsigned long)p >> (unsigned)(i * 4)) & 0xFull);
@@ -631,7 +478,7 @@ static inline void stlog_on_tx_cplt(UART_HandleTypeDef *huart)
 static inline unsigned stlog__next_(unsigned x)
 {
     x++;
-    if (x >= (unsigned)STLOG_TX_BUF_SIZE) x = 0u;
+    if (x >= (unsigned)YORULOG_TX_BUF_SIZE) x = 0u;
     return x;
 }
 
@@ -644,16 +491,16 @@ static inline unsigned stlog__advance_(unsigned x, unsigned n)
 static inline unsigned stlog__seg_len_(const YORULOG_HandleTypeDef *l)
 {
     unsigned t = l->tail, h = l->head;
-    return (h > t) ? (h - t) : ((unsigned)STLOG_TX_BUF_SIZE - t);
+    return (h > t) ? (h - t) : ((unsigned)YORULOG_TX_BUF_SIZE - t);
 }
 
 static inline void stlog__prepare_dma_tx_(const unsigned char *ptr, unsigned len)
 {
-#if STLOG_ENABLE && STLOG_DMA_CACHE_CLEAN
+#if YORULOG_ENABLE && YORULOG_DMA_CACHE_CLEAN
     if ((ptr == (const unsigned char *)0) || (len == 0u)) return;
 
     {
-        const uintptr_t line_size = (uintptr_t)STLOG_DMA_CACHE_LINE_SIZE;
+        const uintptr_t line_size = (uintptr_t)YORULOG_DMA_CACHE_LINE_SIZE;
         if (line_size == 0u) return;
         const uintptr_t start = (uintptr_t)ptr;
         const uintptr_t aligned_start = start & ~(line_size - 1u);
@@ -671,7 +518,7 @@ static inline void stlog__prepare_dma_tx_(const unsigned char *ptr, unsigned len
 
 static inline void stlog__tx_blocking_bytes_(const unsigned char *buf, unsigned len)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     if (!buf || (len == 0u) || !g_stlog.huart) return;
 
     while (len != 0u) {
@@ -708,17 +555,17 @@ static inline void stlog__push_(YORULOG_HandleTypeDef *l, unsigned char c)
     unsigned next = stlog__next_(l->head);
 
     if (next == l->tail) {
-#if STLOG_BLOCK_ON_FULL
+#if YORULOG_BLOCK_ON_FULL
         stlog__flush_blocking_(l);
         next = stlog__next_(l->head);
         if (next == l->tail) {
-#if STLOG_DROP_NEW_ON_FULL
+#if YORULOG_DROP_NEW_ON_FULL
             return;
 #else
             l->tail = stlog__next_(l->tail);
 #endif
         }
-#elif STLOG_DROP_NEW_ON_FULL
+#elif YORULOG_DROP_NEW_ON_FULL
         return;
 #else
         if (l->tx_busy) return;
@@ -732,7 +579,7 @@ static inline void stlog__push_(YORULOG_HandleTypeDef *l, unsigned char c)
 
 static inline void stlog__flush_blocking_(YORULOG_HandleTypeDef *l)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     if (!l || !l->huart) return;
     while (l->tx_busy) {}
 
@@ -757,7 +604,7 @@ static inline void stlog__flush_blocking_(YORULOG_HandleTypeDef *l)
  */
 static inline void stlog__kick_(YORULOG_HandleTypeDef *l)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     if (!l || !l->huart) return;
     if (l->head == l->tail) return;
     if (l->tx_busy) return;
@@ -789,7 +636,7 @@ static inline void stlog__kick_(YORULOG_HandleTypeDef *l)
 /* Must be called from HAL_UART_TxCpltCallback */
 static inline void YORULOG_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     if (g_stlog.huart == huart) {
         if (g_stlog.tx_busy) {
             g_stlog.tail = stlog__advance_(g_stlog.dma_tail, g_stlog.dma_len);
@@ -811,7 +658,7 @@ static inline void stlog_on_tx_cplt(UART_HandleTypeDef *huart)
 /* Output primitives: push to ring buffer then kick transmission */
 static inline void stlog_write_cstr_(const char *s)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     if (!s) return;
     while (*s) stlog__push_(&g_stlog, (unsigned char)*s++);
     stlog__kick_(&g_stlog);
@@ -822,13 +669,13 @@ static inline void stlog_write_cstr_(const char *s)
 
 static inline void stlog_write_cstr_long_(const char *s)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     unsigned len;
 
     if (!s) return;
 
     len = stlog__cstr_len_(s);
-#if !STLOG_MINI
+#if !YORULOG_MINI
     stlog__flush_blocking_(&g_stlog);
 #endif
     stlog__tx_blocking_bytes_((const unsigned char *)s, len);
@@ -839,8 +686,8 @@ static inline void stlog_write_cstr_long_(const char *s)
 
 static inline void stlog_nl_(void)
 {
-#if STLOG_ENABLE
-#if STLOG_CRLF
+#if YORULOG_ENABLE
+#if YORULOG_CRLF
     stlog__push_(&g_stlog, '\r');
 #endif
     stlog__push_(&g_stlog, '\n');
@@ -850,8 +697,8 @@ static inline void stlog_nl_(void)
 
 static inline void stlog_nl_long_(void)
 {
-#if STLOG_ENABLE
-#if STLOG_CRLF
+#if YORULOG_ENABLE
+#if YORULOG_CRLF
     static const unsigned char nl[] = "\r\n";
     stlog__tx_blocking_bytes_(nl, 2u);
 #else
@@ -863,7 +710,7 @@ static inline void stlog_nl_long_(void)
 
 static inline void stlog_char_(char c)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     stlog__push_(&g_stlog, (unsigned char)c);
     stlog__kick_(&g_stlog);
 #else
@@ -873,7 +720,7 @@ static inline void stlog_char_(char c)
 
 static inline void stlog_u32_(unsigned v)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     char buf[10];
     unsigned i = 0u;
 
@@ -897,7 +744,7 @@ static inline void stlog_u32_(unsigned v)
 
 static inline void stlog_u64_(unsigned long long v)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     char buf[20];
     unsigned i = 0u;
 
@@ -921,7 +768,7 @@ static inline void stlog_u64_(unsigned long long v)
 
 static inline void stlog_i32_(int v)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     if (v < 0) {
         stlog__push_(&g_stlog, '-');
         unsigned uv = (unsigned)(0u - (unsigned)v);
@@ -936,7 +783,7 @@ static inline void stlog_i32_(int v)
 
 static inline void stlog_i64_(long long v)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     if (v < 0ll) {
         stlog__push_(&g_stlog, '-');
         stlog_u64_(0ull - (unsigned long long)v);
@@ -950,7 +797,7 @@ static inline void stlog_i64_(long long v)
 
 static inline void stlog_hex_u32_(unsigned v)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     for (int i = 7; i >= 0; --i) {
         unsigned nib = (v >> (unsigned)(i * 4)) & 0xFu;
         unsigned char c = (unsigned char)((nib < 10u) ? ('0' + nib) : ('A' + (nib - 10u)));
@@ -964,7 +811,7 @@ static inline void stlog_hex_u32_(unsigned v)
 
 static inline void stlog_ptr_(const void *p)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     stlog_write_cstr_("0x");
     for (int i = (int)(sizeof(void*) * 2u) - 1; i >= 0; --i) {
         unsigned nib = (unsigned)(((unsigned long long)(unsigned long)p >> (unsigned)(i * 4)) & 0xFull);
@@ -977,25 +824,25 @@ static inline void stlog_ptr_(const void *p)
 #endif
 }
 
-#endif /* STLOG_MINI */
+#endif /* YORULOG_MINI */
 
 /* =========================================================
  *  Prefix and Timestamp Handling
  * ========================================================= */
 static inline void stlog__emit_prefix_(YORULOG_LevelTypeDef lv)
 {
-#if STLOG_ENABLE
-#if STLOG_TIMESTAMP
+#if YORULOG_ENABLE
+#if YORULOG_TIMESTAMP
     stlog_write_cstr_("[");
-    stlog_u32_(STLOG_NOW_MS());
+    stlog_u32_(YORULOG_NOW_MS());
     stlog_write_cstr_("] ");
 #endif
 
-    if (lv == LOG_ERROR) stlog_write_cstr_(STLOG_PREFIX_E);
-    else if (lv == LOG_WARN)  stlog_write_cstr_(STLOG_PREFIX_W);
-    else if (lv == LOG_INFO)  stlog_write_cstr_(STLOG_PREFIX_I);
-    else if (lv == LOG_DEBUG) stlog_write_cstr_(STLOG_PREFIX_D);
-    else stlog_write_cstr_(STLOG_PREFIX_T);
+    if (lv == LOG_ERROR) stlog_write_cstr_(YORULOG_PREFIX_E);
+    else if (lv == LOG_WARN)  stlog_write_cstr_(YORULOG_PREFIX_W);
+    else if (lv == LOG_INFO)  stlog_write_cstr_(YORULOG_PREFIX_I);
+    else if (lv == LOG_DEBUG) stlog_write_cstr_(YORULOG_PREFIX_D);
+    else stlog_write_cstr_(YORULOG_PREFIX_T);
 #else
     (void)lv;
 #endif
@@ -1004,9 +851,9 @@ static inline void stlog__emit_prefix_(YORULOG_LevelTypeDef lv)
 /* FULL mode: ERROR/WARN can force flush queue; MINI mode is always blocking */
 static inline void stlog__commit_level_(YORULOG_LevelTypeDef lv)
 {
-#if STLOG_ENABLE
-#if !STLOG_MINI
-#if STLOG_FORCE_BLOCKING_EW
+#if YORULOG_ENABLE
+#if !YORULOG_MINI
+#if YORULOG_FORCE_BLOCKING_EW
     if (lv <= LOG_WARN) {
         /* Force blocking flush to ensure critical messages are delivered */
         stlog__flush_blocking_(&g_stlog);
@@ -1022,8 +869,8 @@ static inline void stlog__commit_level_(YORULOG_LevelTypeDef lv)
 
 static inline void YORULOG_Flush(void)
 {
-#if STLOG_ENABLE
-#if STLOG_MINI
+#if YORULOG_ENABLE
+#if YORULOG_MINI
     return;
 #else
     stlog__flush_blocking_(&g_stlog);
@@ -1038,7 +885,7 @@ static inline void stlog_flush(void)
 
 static inline void YORULOG_PrintLong(const char *s)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     YORULOG_LOCK();
     stlog_write_cstr_long_(s ? s : "");
     YORULOG_UNLOCK();
@@ -1049,7 +896,7 @@ static inline void YORULOG_PrintLong(const char *s)
 
 static inline void YORULOG_PrintLongln(const char *s)
 {
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
     YORULOG_LOCK();
     stlog_write_cstr_long_(s ? s : "");
     stlog_nl_long_();
@@ -1092,7 +939,7 @@ static inline void stlog_print_longln(const char *s)
         default:     stlog_ptr_ \
     )(x)
 
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
   #define YORULOG_Print(x)   do{ YORULOG_LOCK(); stlog__print_any_(x); YORULOG_UNLOCK(); }while(0)
   #define YORULOG_Println(x) do{ YORULOG_LOCK(); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); }while(0)
   #define print(x)   YORULOG_Print(x)
@@ -1107,7 +954,7 @@ static inline void stlog_print_longln(const char *s)
 /* =========================================================
  *  Level-based Logging Macros with Prefixes
  * ========================================================= */
-#if STLOG_ENABLE
+#if YORULOG_ENABLE
   #define YORULOG_LogError(x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_ERROR)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_ERROR); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_ERROR); } }while(0)
   #define YORULOG_LogWarn(x)  do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_WARN )){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_WARN ); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_WARN ); } }while(0)
   #define YORULOG_LogInfo(x)  do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_INFO )){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_INFO ); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_INFO ); } }while(0)
