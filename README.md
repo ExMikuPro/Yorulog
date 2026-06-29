@@ -1,51 +1,140 @@
 # Yorulog
 
-Yorulog is a lightweight UART logger for STM32 HAL.
+Yorulog is a lightweight UART logging library for **STM32 HAL**.
 
-It is distributed as a single header, does not depend on `printf`, and does not pull in an extra format parser. The goal is to keep Flash, RAM, and stack usage as low as possible while still providing the logging features commonly needed in embedded development, such as log levels, level prefixes, optional timestamps, and DMA-based asynchronous transmission.
+It is distributed as a single header, does not depend on `printf`, and does not pull in a full format parser. Its goal is straightforward: provide UART logging that is usable and controllable enough for STM32 projects while keeping Flash, RAM, and stack overhead as low as possible.
 
-It is a good fit for STM32 projects that are relatively resource-constrained but still need basic debug output.
+Yorulog is a good fit for firmware projects that are resource-constrained but still need basic debug output.
 
 ---
 
-## Key Features
+> **Yoru Series**
+>
+> A family of lightweight utility libraries for STM32 HAL. Each library can be used independently or combined as needed.
+>
+> | Library | Role |
+> | --- | --- |
+> | [Yorulog](https://github.com/ExMikuPro/Yorulog) | Lightweight UART logger |
+> | [Yorush](https://github.com/ExMikuPro/Yorush) | Lightweight UART shell / command parser |
+> | [Yorunvm](https://github.com/ExMikuPro/Yorunvm) | STM32 on-chip NVM / Flash access helper |
+> | [Yorukv](https://github.com/ExMikuPro/Yorukv) | Lightweight KV configuration library |
 
-* Single header: just include `yorulog.h`
-* Based on STM32 HAL UART
-* No `printf`
-* No heavy stdlib formatting dependency
-* Supports two operating modes:
+---
 
-  * MINI: blocking direct transmit, smallest footprint
-  * FULL: ring buffer with optional automatic UART TX DMA
-* Supports log levels:
+## Features
 
-  * `ERROR`
-  * `WARN`
-  * `INFO`
-  * `DEBUG`
-  * `TRACE`
-* Supports level prefixes:
+- **Single-header integration**: just include `yorulog.h`
+- **Designed for STM32 HAL UART**: works directly with `UART_HandleTypeDef`
+- **No `printf`**: avoids pulling in a heavier formatting runtime
+- **Two operating modes**:
+  - `MINI`: blocking direct UART transmit with the smallest footprint
+  - `FULL`: ring buffer with UART TX DMA support and blocking fallback when needed
+- **Log levels**:
+  - `ERROR`
+  - `WARN`
+  - `INFO`
+  - `DEBUG`
+  - `TRACE`
+- **Level prefixes**:
+  - `[E]`
+  - `[W]`
+  - `[I]`
+  - `[D]`
+  - `[T]`
+- **Optional timestamps**
+- **Automatic output for common types**:
+  - string
+  - character
+  - signed integer
+  - unsigned integer
+  - pointer
+- **Long-text output path**
+- **Automatic STM32 HAL header detection**
+- **DMA-accessible buffer placement enabled by default on STM32H7**
 
-  * `[E]`
-  * `[W]`
-  * `[I]`
-  * `[D]`
-  * `[T]`
-* Supports optional timestamps
-* Supports `YORULOG_Print()` / `YORULOG_Println()` with automatic handling of common types
-* Can auto-detect the STM32 HAL header
-* Enables DMA-accessible buffer support by default on STM32H7
+---
+
+## Project Positioning
+
+Yorulog is not a full general-purpose logging framework, and it is not a full replacement for `printf`.
+
+It is closer to a small utility that can be dropped directly into an STM32 project: it provides basic, reliable, low-overhead, easy-to-control UART logging without introducing a heavyweight formatting system.
+
+Suitable for:
+
+- STM32 HAL projects
+- firmware that does not want to pull in `printf`
+- MCUs with limited Flash / RAM
+- projects that need quick UART debug logging
+- projects that want to switch between blocking logging and DMA logging
+- STM32H7 / F7-class targets that need to care about DMA cache and memory placement
+
+Not suitable for:
+
+- projects that need full formatted string support
+- projects that need multi-backend logging
+- projects that need tags, colors, filesystem logging, or other complex features
+- non-STM32 HAL projects
+
+---
+
+## Related Yoru Libraries
+
+Yorulog is part of the Yoru family of lightweight STM32 utility libraries.
+
+These libraries follow similar design principles: single-header where practical, low dependency surface, low resource usage, and a strong focus on STM32 HAL projects. They do not depend on each other by force. Each library can be used independently or combined as needed.
+
+| Library | Role | Description |
+| --- | --- | --- |
+| [Yorulog](https://github.com/ExMikuPro/Yorulog) | UART logger | This repository. Provides lightweight UART logging with `MINI` / `FULL` modes and optional UART TX DMA |
+| [Yorush](https://github.com/ExMikuPro/Yorush) | UART shell / command parser | Provides lightweight serial command interaction, including command dispatch, argument parsing, and help output, with optional Yorulog-based output |
+| [Yorunvm](https://github.com/ExMikuPro/Yorunvm) | NVM / Flash helper | Lightweight helper for STM32 on-chip non-volatile storage, mainly wrapping Flash read, write, erase, and region protection |
+| [Yorukv](https://github.com/ExMikuPro/Yorukv) | KV config library | Lightweight key-value configuration layer with fixed-table registration, common base-type access, and optional single-region log-style persistence |
+
+### Example Combinations
+
+These libraries can be integrated independently or combined into a more complete set of debug, configuration, and on-chip storage building blocks:
+
+- `Yorulog`: only need basic UART logging
+- `Yorush`: only need a lightweight serial command entry point
+- `Yorunvm`: only need controlled access to STM32 on-chip Flash
+- `Yorukv`: only need a simple key-value configuration layer
+- `Yorulog + Yorush`: view logs, run debug commands, and print help text over UART
+- `Yorunvm + Yorukv`: store configuration items in STM32 on-chip Flash
+- `Yorulog + Yorukv`: log configuration load, save, reset, and persistence errors
+- `Yorush + Yorukv`: inspect, modify, and reset configuration items through serial commands
+- `Yorulog + Yorush + Yorunvm + Yorukv`: build a lightweight combination of logging, command interaction, on-chip storage, and configuration management
+
+The goal of the Yoru family is not to become a large general-purpose framework. The goal is to provide a set of small utility libraries that can be dropped directly into STM32 projects. Each library tries to remain independent, trim, and replaceable.
+
+### Layering
+
+If several libraries are used together, they can be viewed like this:
+
+```text
+Yorush   -> serial command entry
+Yorulog  -> log output
+Yorukv   -> configuration management
+Yorunvm  -> STM32 on-chip Flash access helper
+```
+
+Yorukv can attach to different storage backends through backend callbacks. For STM32 on-chip Flash use cases, Yorunvm can be used as the lower-level NVM access layer.
 
 ---
 
 ## Why not use `printf`
 
-On small MCUs, `printf` is convenient, but the tradeoff is often obvious.
+On small MCUs, `printf` is convenient, but the tradeoff is usually obvious.
 
-It usually pulls in extra formatting runtime code, increases Flash usage, increases stack usage, and makes final code size harder to predict. For firmware that only needs simple logging, that overhead is not always worth it.
+It often pulls in extra formatting runtime code, which can lead to:
 
-Yorulog avoids format parsing and only provides direct output for common types. That keeps the implementation simpler and the runtime behavior more predictable.
+- higher Flash usage
+- higher stack usage
+- less predictable link results
+- even larger code size when floating-point formatting is enabled
+- unnecessary overhead for projects that only need simple logs
+
+Yorulog avoids the format parser and only keeps the output capabilities most commonly needed in embedded debugging. That keeps the implementation simpler and code size easier to control.
 
 ---
 
@@ -53,22 +142,32 @@ Yorulog avoids format parsing and only provides direct output for common types. 
 
 ### 1. Add the header
 
-Place `yorulog.h` in your project, for example:
+Place `yorulog.h` into your project, for example:
 
 ```text
-/Core/Yorulog/yorulog.h
+Core/Yorulog/yorulog.h
 ```
+
+Then include it in the files that need logging:
+
+```c
+#include "yorulog.h"
+```
+
+---
 
 ### 2. Define the global implementation in one `.c` file
 
-In exactly one `.c` file, define the following before including the header:
+Yorulog is a single-header library. You need to define `YORULOG_DEFINE_GLOBALS` in exactly one `.c` file.
+
+Placing it in `main.c` or a dedicated `yorulog_port.c` is recommended:
 
 ```c
 #define YORULOG_DEFINE_GLOBALS
 #include "yorulog.h"
 ```
 
-In all other `.c` files, just include it normally:
+All other `.c` files should only include it normally:
 
 ```c
 #include "yorulog.h"
@@ -76,34 +175,7 @@ In all other `.c` files, just include it normally:
 
 ---
 
-## Select the operating mode
-
-### MINI mode
-
-MINI mode uses blocking UART transmission. It has the simplest logic and the lowest footprint, so it is suitable for projects with very tight resource limits or only a small amount of logging.
-
-```c
-#define YORULOG_MINI 1
-#define YORULOG_TIMESTAMP 1
-#define YORULOG_DEFINE_GLOBALS
-#include "yorulog.h"
-```
-
-### FULL mode
-
-FULL mode uses a ring buffer. If TX DMA is configured in the UART handle, Yorulog will automatically use DMA for transmission. If DMA is not configured, it will fall back to blocking transmit.
-
-```c
-#define YORULOG_MINI 0
-#define YORULOG_TX_BUF_SIZE 512
-#define YORULOG_TIMESTAMP 1
-#define YORULOG_DEFINE_GLOBALS
-#include "yorulog.h"
-```
-
----
-
-## Basic Usage
+### 3. Initialize UART
 
 ```c
 extern UART_HandleTypeDef huart1;
@@ -129,11 +201,76 @@ int main(void)
 
 ---
 
+## Select the Operating Mode
+
+Yorulog provides two modes: `MINI` and `FULL`.
+
+| Mode | TX path | RAM usage | DMA | Suitable for |
+| --- | --- | ---: | --- | --- |
+| `MINI` | blocking UART transmit | lowest | not used | very small projects, a few boot logs, minimal production-safe logging |
+| `FULL` | ring buffer + optional DMA | higher | supported | debug phase, heavier logging, lower blocking in application code |
+
+---
+
+### MINI Mode
+
+`MINI` mode always uses blocking UART transmission.
+
+It has no ring buffer and does not use DMA. The advantage is a very small footprint and simple behavior. The downside is that application code waits directly for UART transmission when logs are frequent.
+
+```c
+#define YORULOG_MINI 1
+#define YORULOG_TIMESTAMP 1
+
+#define YORULOG_DEFINE_GLOBALS
+#include "yorulog.h"
+```
+
+Suitable for:
+
+- MCUs with very small Flash / RAM
+- projects that only need a small amount of boot-time logging
+- projects that do not want any extra buffer
+- projects that can accept short blocking in the main loop during logging
+
+---
+
+### FULL Mode
+
+`FULL` mode uses a ring buffer.
+
+If the UART handle already has TX DMA configured, Yorulog automatically uses DMA for transmission. If TX DMA is not configured, it automatically falls back to blocking transmission.
+
+```c
+#define YORULOG_MINI 0
+#define YORULOG_TX_BUF_SIZE 512
+#define YORULOG_TIMESTAMP 1
+
+#define YORULOG_DEFINE_GLOBALS
+#include "yorulog.h"
+```
+
+Suitable for:
+
+- debug phases with heavier logging
+- projects that want to reduce UART line-speed blocking
+- projects that already configured UART TX DMA in CubeMX / HAL
+- use cases involving shell output, help menus, or longer text output
+
+The default behavior favors log completeness.  
+When the buffer becomes full, the default action is to block or flush instead of silently dropping new logs.
+
+---
+
 ## FULL Mode and DMA
 
-In FULL mode, if `huart->hdmatx != NULL`, Yorulog will automatically use DMA TX.
+In `FULL` mode, Yorulog uses UART TX DMA if this condition is true:
 
-The HAL transmit-complete callback must be forwarded to Yorulog:
+```c
+huart->hdmatx != NULL
+```
+
+You need to forward the HAL UART transmit-complete callback to Yorulog:
 
 ```c
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
@@ -142,23 +279,23 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 }
 ```
 
-If TX DMA is not configured, FULL mode still works and automatically falls back to blocking transmission.
+If TX DMA is not configured, `FULL` mode still works and simply falls back to blocking transmission.
 
 ---
 
-## STM32H7 Notes
+## STM32H7 / F7 Notes
 
-STM32H7 has a special memory layout. In many projects, the default `.data` / `.bss` sections are placed in DTCM, but DMA cannot access DTCM.
+STM32H7 has a more special memory layout than many other STM32 series. In many projects, `.data` / `.bss` are placed in DTCM by default, but **DMA cannot access DTCM**.
 
-For that reason, Yorulog places the DMA transmit buffer into a DMA-accessible section by default on STM32H7.
+For that reason, Yorulog places the DMA TX buffer into a DMA-accessible section by default on STM32H7.
 
-The default section name is:
+Default section name:
 
 ```c
 #define YORULOG_DMA_SECTION ".RAM_D2"
 ```
 
-Your linker script needs to place that section into DMA-accessible RAM, for example:
+Your linker script needs to place this section into DMA-accessible RAM, for example:
 
 ```ld
 .RAM_D2 (NOLOAD) :
@@ -170,22 +307,48 @@ Your linker script needs to place that section into DMA-accessible RAM, for exam
 } >RAM_D2
 ```
 
-If D-Cache is enabled in the project, you also need to consider DMA buffer coherency.
+If D-Cache is enabled, DMA buffer coherency also needs attention.
 
-The current release provides a default cache-clean step before starting DMA TX on H7/F7-class targets:
+On H7 / F7-class Cortex-M7 targets, Yorulog cleans the D-Cache by default before starting DMA TX:
 
 ```c
 #define YORULOG_DMA_CACHE_CLEAN 1
 #define YORULOG_DMA_CACHE_LINE_SIZE 32
 ```
 
-You can still use MPU to mark the DMA region as non-cacheable, which is often the cleanest setup on STM32H7.
+A more robust setup is to use MPU and mark the DMA buffer region as non-cacheable.
 
 ---
 
 ## API
 
-### Logging output
+### Initialization
+
+```c
+YORULOG_Init(&huart1);
+```
+
+---
+
+### Set Log Level
+
+```c
+YORULOG_SetLevel(YORULOG_LEVEL_INFO);
+```
+
+Filtering rule: only logs whose severity is not lower than the current level are printed.
+
+For example, after setting `YORULOG_LEVEL_INFO`:
+
+- `ERROR` is printed
+- `WARN` is printed
+- `INFO` is printed
+- `DEBUG` is ignored
+- `TRACE` is ignored
+
+---
+
+### Log Output
 
 ```c
 YORULOG_LogError("fatal");
@@ -195,18 +358,19 @@ YORULOG_LogDebug("debug");
 YORULOG_LogTrace("trace");
 ```
 
-The logging macros take one argument and automatically handle common types:
+The logging macros take one argument and automatically recognize common types:
 
-* `const char*`
-* `char*`
-* `char`
-* signed integers
-* unsigned integers
-* pointers
+| Type | Example |
+| --- | --- |
+| `const char*` / `char*` | `YORULOG_LogInfo("boot");` |
+| `char` | `YORULOG_LogDebug('A');` |
+| signed integer | `YORULOG_LogDebug(-123);` |
+| unsigned integer | `YORULOG_LogDebug(123u);` |
+| pointer | `YORULOG_LogWarn((void*)0x20000000);` |
 
 ---
 
-### Raw output
+### Raw Output
 
 ```c
 YORULOG_Print("x=");
@@ -214,39 +378,34 @@ YORULOG_Print(123);
 YORULOG_Println("done");
 ```
 
-`YORULOG_Print()` does not append a newline.
+`YORULOG_Print()` does not append a newline.  
 `YORULOG_Println()` appends a newline after the output.
 
-For long menu text, shell help, or other output where line completeness matters more than non-blocking behavior, use the long-text path:
+---
+
+### Long Text Output
+
+If you need to print help menus, shell prompts, or longer descriptive text, the long-text APIs are recommended:
 
 ```c
 YORULOG_PrintLong("help: ");
 YORULOG_PrintLongln("show all commands");
 ```
 
-In FULL mode, the long-text APIs flush pending buffered logs first and then use blocking UART transmit for the long text itself. In MINI mode, they behave like the normal blocking path.
+In `FULL` mode, the long-text path flushes pending buffered logs first, then uses blocking UART transmission for that long text.  
+In `MINI` mode, its behavior is the same as the normal blocking path.
+
+This path is better suited to use cases where complete line output matters more than non-blocking behavior.
 
 ---
 
-### Set log level
-
-```c
-YORULOG_SetLevel(YORULOG_LEVEL_INFO);
-```
-
-Only logs at or above the active level are printed.
-
-For example, if the level is set to `YORULOG_LEVEL_INFO`, then `ERROR`, `WARN`, and `INFO` are printed, while `DEBUG` and `TRACE` are ignored.
-
----
-
-### Manual flush
+### Manual Flush
 
 ```c
 YORULOG_Flush();
 ```
 
-In FULL mode, this can be used to actively flush the ring buffer.
+In `FULL` mode, this can be used to actively flush buffered data.
 
 ---
 
@@ -256,66 +415,77 @@ All configuration macros must be defined before including `yorulog.h`.
 
 | Macro | Default | Description |
 | --- | ---: | --- |
-| `YORULOG_ENABLE` | `1` | master enable switch |
+| `YORULOG_ENABLE` | `1` | master enable |
 | `YORULOG_MINI` | `0` | `1` = MINI mode, `0` = FULL mode |
 | `YORULOG_TX_BUF_SIZE` | `512` | ring buffer size in FULL mode |
 | `YORULOG_DEFAULT_LEVEL` | `4` | default log level, which means `TRACE` |
-| `YORULOG_TIMESTAMP` | `0` | whether to output timestamps |
+| `YORULOG_TIMESTAMP` | `0` | whether to print timestamps |
 | `YORULOG_NOW_MS()` | `HAL_GetTick()` | custom millisecond time source |
-| `YORULOG_CRLF` | `1` | whether to use `\r\n` |
+| `YORULOG_CRLF` | `1` | whether to use `\r\n` line endings |
 | `YORULOG_DROP_NEW_ON_FULL` | `0` | whether to drop new data when the buffer is full |
 | `YORULOG_BLOCK_ON_FULL` | `1` | whether to block or flush when the buffer is full |
-| `YORULOG_FORCE_BLOCKING_EW` | `1` | whether `ERROR` / `WARN` should force a flush |
-| `YORULOG_DMA_SECTION` | `".RAM_D2"` on H7 | section used for the DMA buffer |
-| `YORULOG_DMA_CACHE_CLEAN` | `1` on H7/F7-class targets | clean D-Cache before DMA TX |
-| `YORULOG_DMA_CACHE_LINE_SIZE` | `32` | cache line size used for DMA clean alignment |
-| `YORULOG_PREFIX_E/W/I/D/T` | `"[E] "` etc | custom level prefixes |
+| `YORULOG_FORCE_BLOCKING_EW` | `1` | whether `ERROR` / `WARN` force a flush |
+| `YORULOG_DMA_SECTION` | `".RAM_D2"` by default on H7 | section used for the DMA buffer |
+| `YORULOG_DMA_CACHE_CLEAN` | enabled by default on H7 / F7-class targets | whether to clean D-Cache before DMA TX |
+| `YORULOG_DMA_CACHE_LINE_SIZE` | `32` | cache line size used for cache-clean alignment |
+| `YORULOG_PREFIX_E/W/I/D/T` | `"[E] "` and so on | custom level prefixes |
 
-The current release still keeps a compatibility layer, so the old `STLOG_*` macros and `stlog_*` / `log*` APIs can still be used.
+Configuration now consistently uses the `YORULOG_*` prefix.  
+The old `STLOG_*` configuration macros are no longer kept.
 
 ---
 
 ## Behavior Notes
 
-### MINI mode
+### When the Buffer Becomes Full
 
-MINI mode always uses blocking UART transmission.
+In `FULL` mode, Yorulog prioritizes log completeness by default.  
+When the ring buffer becomes full, the default behavior is to block or flush rather than directly dropping new logs.
 
-It has no ring buffer and does not use DMA. The advantage is a very small footprint and simple behavior; the downside is that a large amount of logging directly consumes CPU time.
+If you care more about keeping application code from being blocked by logging, you can adjust it like this:
 
-Suitable for:
+```c
+#define YORULOG_DROP_NEW_ON_FULL 1
+#define YORULOG_BLOCK_ON_FULL 0
+```
 
-* very resource-constrained firmware
-* projects that only need a small amount of boot-time logging
-* production firmware where log timing is not critical
+With that configuration, new logs are dropped when the buffer is full.
 
 ---
 
-### FULL mode
+### ERROR / WARN Flush Strategy
 
-FULL mode uses a ring buffer.
+By default, `ERROR` and `WARN` force a flush to reduce the chance that critical logs remain buffered:
 
-If UART TX DMA is configured, logs are first written into the buffer and then transmitted by DMA. This reduces the amount of time that the main loop or business logic is blocked by UART line speed.
+```c
+#define YORULOG_FORCE_BLOCKING_EW 1
+```
 
-The default strategy prioritizes log completeness over being completely non-blocking in extreme conditions. In other words, when the buffer is full, the default behavior is to block or flush rather than silently drop logs.
+If you want all log levels to follow the buffered path as much as possible, you can disable it:
 
-Suitable for:
+```c
+#define YORULOG_FORCE_BLOCKING_EW 0
+```
 
-* debug phases with heavier log output
-* projects that want to reduce UART blocking time
-* firmware that already has UART TX DMA configured
-* shell-style features such as Yorush, command help, and longer menu text
+---
 
-When used together with Yorush or other shell-style middleware:
+### Working with Shell / Command Help
 
-* `MINI` still works correctly, but long help text is fully blocking and may pause the main loop briefly.
-* `FULL` is usually the better balance if the project can spare the extra RAM.
+If Yorulog is used together with shell-style middleware such as Yorush:
+
+- `MINI` works correctly, but long help text is fully blocking and may pause the main loop briefly.
+- `FULL` uses more RAM, but is generally the better balance when logs are heavier or command output is longer.
+- For help menus, command lists, and other long text, `YORULOG_PrintLong()` / `YORULOG_PrintLongln()` are recommended.
 
 ---
 
 ## Size Measurements
 
-The test platform is STM32H743 using the current repository test project and the Release preset.
+Test platform:
+
+- MCU: STM32H743
+- Project: current repository test project
+- Build preset: Release
 
 Build flags:
 
@@ -363,32 +533,90 @@ Build flags:
 
 The self-test strings and demo logic add about `1440 B` of extra Flash by themselves.
 
-MINI mode does not keep the FULL-mode DMA ring buffer, so `RAM_D2` remains at `+0 B` in this measurement.
+`MINI` mode does not keep the `FULL`-mode DMA ring buffer, so `RAM_D2` stays at `+0 B` in this measurement.
 
 ---
 
-## Performance Notes
+## Performance Measurements
 
-Measured on the same STM32H743 test project with `USART1 @ 115200` in FULL mode:
+The test platform is also STM32H743.
 
-* `raw println x8`: `272 B`, `enqueue_us=163`, `total_us=23728`, `throughput_Bps=11463`
-* `raw println x8 cycles`: `total=10437`, `per_call=1304`, `per_byte=38`
-* `info log x6`: `228 B`, `enqueue_us=138`, `total_us=32367`, `throughput_Bps=7044`
-* `info log x6 cycles`: `total=8790`, `per_call=1465`, `per_byte=38`
-* `u32 print x32`: `54 B`, `enqueue_us=145`, `total_us=16513`, `throughput_Bps=3270`
-* `u32 print x32 cycles`: `total=9281`, `per_call=290`, `per_byte=171`
+Test setup:
 
-Interpretation:
+- USART1
+- Baud rate: 115200
+- `FULL` mode
+- TIM used for `1 us` timing
+- DWT used for cycle counting
 
-* On this setup, the logger's own enqueue overhead is roughly in the **tens of microseconds per call**.
-* In this benchmark, the string path is about `38 cycles/byte`, while integer-to-string output is noticeably more expensive.
-* End-to-end throughput is mainly limited by the `115200` UART line rate, not by the logger itself.
-* The example test project now includes both a TIM-based `1 us` timing benchmark and a DWT cycle counter benchmark, which makes it easier to compare time-in-us and CPU-cycle cost across STM32 targets.
+### Results
+
+| Test item | Data size | Enqueue time | Total time | Throughput |
+| --- | ---: | ---: | ---: | ---: |
+| `raw println x8` | 272 B | 163 us | 23728 us | 11463 B/s |
+| `info log x6` | 228 B | 138 us | 32367 us | 7044 B/s |
+| `u32 print x32` | 54 B | 145 us | 16513 us | 3270 B/s |
+
+### Cycle Counts
+
+| Test item | total | per_call | per_byte |
+| --- | ---: | ---: | ---: |
+| `raw println x8 cycles` | 10437 | 1304 | 38 |
+| `info log x6 cycles` | 8790 | 1465 | 38 |
+| `u32 print x32 cycles` | 9281 | 290 | 171 |
+
+### Summary
+
+With this setup, Yorulog's enqueue overhead is roughly in the tens of microseconds per call.
+
+The string output path is about `38 cycles/byte`.  
+Integer output costs more per byte because it needs number-to-string conversion.
+
+End-to-end latency is mainly limited by the `115200` UART line rate, so the bottleneck is not the logger itself.
+
+---
+
+## Recommended Configurations
+
+### Extreme Low Footprint
+
+```c
+#define YORULOG_MINI 1
+#define YORULOG_TIMESTAMP 0
+```
+
+Suitable for small Flash / RAM MCUs, or projects that only need a small amount of boot logging.
+
+---
+
+### General Debugging
+
+```c
+#define YORULOG_MINI 0
+#define YORULOG_TX_BUF_SIZE 512
+#define YORULOG_TIMESTAMP 1
+```
+
+Suitable for most debugging phases.
+
+---
+
+### More Focused on Avoiding Application Blocking
+
+```c
+#define YORULOG_MINI 0
+#define YORULOG_TX_BUF_SIZE 512
+#define YORULOG_DROP_NEW_ON_FULL 1
+#define YORULOG_BLOCK_ON_FULL 0
+#define YORULOG_FORCE_BLOCKING_EW 0
+```
+
+Suitable for scenarios where logging must not interfere with real-time tasks. The tradeoff is that logs may be dropped when the buffer becomes full.
 
 ---
 
 ## License
 
-This project is licensed under the MIT License.
+This project is released under the MIT License.
 
-See the [LICENSE](./LICENSE) file for details.
+See [LICENSE](./LICENSE) for details.
