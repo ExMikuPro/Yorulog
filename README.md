@@ -84,54 +84,6 @@ Not suitable for:
 
 ---
 
-## Related Yoru Libraries
-
-Yorulog is part of the Yoru family of lightweight STM32 utility libraries.
-
-These libraries follow similar design principles: single-header where practical, low dependency surface, low resource usage, and a strong focus on STM32 HAL projects. They do not depend on each other by force. Each library can be used independently or combined as needed.
-
-| Library | Role | Description |
-| --- | --- | --- |
-| [Yorulog](https://github.com/ExMikuPro/Yorulog) | UART logger | This repository. Provides lightweight UART logging with `MINI` / `FULL` modes and optional UART TX DMA |
-| [Yorush](https://github.com/ExMikuPro/Yorush) | UART shell / command parser | Provides lightweight serial command interaction, including command dispatch, argument parsing, and help output, with optional Yorulog-based output |
-| [Yorunvm](https://github.com/ExMikuPro/Yorunvm) | NVM / Flash / EEPROM helper | Lightweight helper for STM32 on-chip non-volatile storage, mainly wrapping Flash / EEPROM access and region protection |
-| [Yorukv](https://github.com/ExMikuPro/Yorukv) | KV config library | Lightweight key-value configuration layer with fixed-table registration, common base-type access, and optional single-region log-style persistence |
-| [Yoruassert](https://github.com/ExMikuPro/Yoruassert.git) | Assertion helper | Lightweight assertion helper with hook-based failure handling, intended for embedded runtime checks without forcing one output path |
-
-### Example Combinations
-
-These libraries can be integrated independently or combined into a more complete set of debug, configuration, and on-chip storage building blocks:
-
-- `Yorulog`: only need basic UART logging
-- `Yorush`: only need a lightweight serial command entry point
-- `Yorunvm`: only need controlled access to STM32 on-chip Flash / EEPROM
-- `Yorukv`: only need a simple key-value configuration layer
-- `Yoruassert`: only need lightweight runtime assertions and failure hooks
-- `Yorulog + Yorush`: view logs, run debug commands, and print help text over UART
-- `Yorunvm + Yorukv`: store configuration items in STM32 on-chip Flash / EEPROM
-- `Yorulog + Yorukv`: log configuration load, save, reset, and persistence errors
-- `Yorush + Yorukv`: inspect, modify, and reset configuration items through serial commands
-- `Yorulog + Yoruassert`: print assertion failures through the same lightweight UART log path when needed
-- `Yorulog + Yorush + Yorunvm + Yorukv`: build a lightweight combination of logging, command interaction, on-chip storage, and configuration management
-
-The goal of the Yoru family is not to become a large general-purpose framework. The goal is to provide a set of small utility libraries that can be dropped directly into STM32 projects. Each library tries to remain independent, trim, and replaceable.
-
-### Layering
-
-If several libraries are used together, they can be viewed like this:
-
-```text
-Yorush   -> serial command entry
-Yorulog  -> log output
-Yorukv   -> configuration management
-Yorunvm  -> STM32 on-chip Flash / EEPROM access helper
-Yoruassert -> runtime assertion / failure hook
-```
-
-Yorukv can attach to different storage backends through backend callbacks. For STM32 on-chip Flash / EEPROM use cases, Yorunvm can be used as the lower-level NVM access layer.
-
----
-
 ## Why not use `printf`
 
 On small MCUs, `printf` is convenient, but the tradeoff is usually obvious.
