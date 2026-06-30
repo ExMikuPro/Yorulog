@@ -20,6 +20,7 @@ Yorulog 适合那些资源紧张、但仍然需要基础调试输出的固件工
 > | [Yorunvm](https://github.com/ExMikuPro/Yorunvm) | STM32 片上 NVM / Flash 访问辅助库 |
 > | [Yorukv](https://github.com/ExMikuPro/Yorukv) | 轻量级 KV 配置库 |
 > | [Yorubench](https://github.com/ExMikuPro/Yorubench) | 轻量级性能测量库 |
+> | [Yoruassert](https://github.com/ExMikuPro/Yoruassert.git) | 轻量级断言辅助库 |
 
 ---
 
@@ -97,6 +98,7 @@ Yorulog 属于 Yoru 系列轻量级 STM32 工具库。
 | [Yorush](https://github.com/ExMikuPro/Yorush) | UART Shell / 命令解析器 | 提供轻量级串口命令交互能力，支持命令分发、参数解析和帮助信息输出，可选择复用 Yorulog 作为输出路径 |
 | [Yorunvm](https://github.com/ExMikuPro/Yorunvm) | NVM / Flash 辅助库 | 面向 STM32 片上非易失存储的轻量级访问辅助库，主要用于封装片上 Flash 的读、写、擦除和访问范围保护 |
 | [Yorukv](https://github.com/ExMikuPro/Yorukv) | KV 配置库 | 轻量级键值配置层，支持固定表注册、常见基础类型读写，以及可选的单区域日志式持久化 |
+| [Yoruassert](https://github.com/ExMikuPro/Yoruassert.git) | 断言辅助库 | 轻量级运行时断言辅助库，使用 hook 处理失败路径，不强绑某一种输出方式 |
 
 ### 组合使用示例
 
@@ -106,10 +108,12 @@ Yorulog 属于 Yoru 系列轻量级 STM32 工具库。
 - `Yorush`：只需要一个轻量级串口命令入口
 - `Yorunvm`：只需要对 STM32 片上 Flash 做受控访问
 - `Yorukv`：只需要一层简单的键值配置管理
+- `Yoruassert`：只需要轻量级运行时断言和失败回调
 - `Yorulog + Yorush`：通过串口查看日志、执行调试命令、输出帮助信息
 - `Yorunvm + Yorukv`：使用 STM32 片上 Flash 保存配置项
 - `Yorulog + Yorukv`：记录配置加载、保存、恢复默认值和持久化错误
 - `Yorush + Yorukv`：通过串口命令查看、修改、重置配置项
+- `Yorulog + Yoruassert`：在需要时通过同一条轻量级 UART 日志路径输出断言失败信息
 - `Yorulog + Yorush + Yorunvm + Yorukv`：形成一个轻量级的日志、命令交互、片上存储和配置管理组合
 
 Yoru 系列的目标不是做一个大型通用框架，而是提供一组可以直接放进 STM32 工程里的小型工具库。每个库都尽量保持独立、可裁剪、可替换。
@@ -123,6 +127,7 @@ Yorush   -> 串口命令入口
 Yorulog  -> 日志输出
 Yorukv   -> 配置项管理
 Yorunvm  -> STM32 片上 Flash 访问辅助
+Yoruassert -> 运行时断言 / 失败回调
 ```
 
 其中，Yorukv 可以通过后端回调接入不同的存储实现；在 STM32 片上 Flash 场景下，可以使用 Yorunvm 作为更底层的 NVM 访问层。
@@ -421,6 +426,18 @@ YORULOG_PrintRawln("\r");
 
 它们当前与 `YORULOG_Print()` / `YORULOG_Println()` 走的是同一条输出路径，但在调用处更容易表达“这里只做纯输出，不带日志等级前缀”的语义。
 
+如果你希望在纯文本整行输出后追加调用位置，可以开启：
+
+```c
+#define YORULOG_TRACE_PRINT_CALLSITE 1
+```
+
+示例：
+
+```text
+done (main.c:123)
+```
+
 ---
 
 ### 长文本输出
@@ -449,6 +466,41 @@ YORULOG_Flush();
 
 ---
 
+### 可选接入 Yoruassert
+
+Yorulog 可以可选接入 Yoruassert，用于内部参数和状态检查：
+
+```c
+#define YORULOG_USE_YORUASSERT 1
+#define YORULOG_YORUASSERT_HEADER "../Yoruassert/yoruassert.h"
+```
+
+如果你希望非法使用日志库时直接触发断言，可以保留：
+
+```c
+#define YORULOG_ASSERT_ON_ERROR 1
+```
+
+典型场景包括：`YORULOG_Init(NULL)`、未初始化就输出、或传入非法日志等级。
+
+---
+
+### 可选调用位置尾注
+
+如果你希望完整日志接口在行尾追加调用位置，可以开启：
+
+```c
+#define YORULOG_TRACE_LOG_CALLSITE 1
+```
+
+示例：
+
+```text
+[I] boot ok (main.c:123)
+```
+
+---
+
 ## 配置宏
 
 所有配置宏都需要在包含 `yorulog.h` 之前定义。
@@ -465,6 +517,11 @@ YORULOG_Flush();
 | `YORULOG_DROP_NEW_ON_FULL` | `0` | 缓冲区满时是否丢弃新数据 |
 | `YORULOG_BLOCK_ON_FULL` | `1` | 缓冲区满时是否阻塞或刷新 |
 | `YORULOG_FORCE_BLOCKING_EW` | `1` | `ERROR` / `WARN` 是否强制刷新 |
+| `YORULOG_USE_YORUASSERT` | `0` | 是否启用可选的 Yoruassert 联动 |
+| `YORULOG_YORUASSERT_HEADER` | `"../Yoruassert/yoruassert.h"` | 自定义 Yoruassert 头文件路径 |
+| `YORULOG_ASSERT_ON_ERROR` | `1` | 在启用 Yoruassert 时，非法日志调用是否触发断言 |
+| `YORULOG_TRACE_PRINT_CALLSITE` | `0` | 是否给 `Println` / `PrintRawln` 追加 `(file:line)` |
+| `YORULOG_TRACE_LOG_CALLSITE` | `0` | 是否给 `LogTag` / `LogXxx` / `LogXxxTag` 追加 `(file:line)` |
 | `YORULOG_DMA_SECTION` | H7 默认 `".RAM_D2"` | DMA 缓冲区所在 section |
 | `YORULOG_DMA_CACHE_CLEAN` | H7 / F7 类目标默认启用 | DMA TX 前是否执行 D-Cache clean |
 | `YORULOG_DMA_CACHE_LINE_SIZE` | `32` | cache clean 对齐使用的 cache line 大小 |

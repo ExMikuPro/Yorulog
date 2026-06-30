@@ -77,6 +77,61 @@ extern "C" {
   #define YORULOG_TIMESTAMP 0
 #endif
 
+/* Optional Yoruassert integration:
+ * 0 = no dependency
+ * 1 = use Yoruassert for internal parameter/state assertions
+ */
+#ifndef YORULOG_USE_YORUASSERT
+  #define YORULOG_USE_YORUASSERT 0
+#endif
+
+#if YORULOG_USE_YORUASSERT
+  #ifndef YORULOG_YORUASSERT_HEADER
+    #define YORULOG_YORUASSERT_HEADER "../Yoruassert/yoruassert.h"
+  #endif
+
+  /* Keep Yorulog -> Yoruassert integration one-way here to avoid recursive
+   * header coupling with Yoruassert's optional Yorulog output path.
+   */
+  #ifndef YORUASSERT_USE_YORULOG
+    #define YORUASSERT_USE_YORULOG 0
+  #endif
+
+  #include YORULOG_YORUASSERT_HEADER
+#endif
+
+/* Internal assert policy when YORULOG_USE_YORUASSERT = 1:
+ * 1 = assert on invalid parameters / invalid runtime state
+ * 0 = keep silent return behavior
+ */
+#ifndef YORULOG_ASSERT_ON_ERROR
+  #define YORULOG_ASSERT_ON_ERROR 1
+#endif
+
+/* Callsite trace:
+ * - PRINT: affects Println / PrintRawln
+ * - LOG: affects LogTag / LogXxx / LogXxxTag
+ */
+#ifndef YORULOG_TRACE_PRINT_CALLSITE
+  #define YORULOG_TRACE_PRINT_CALLSITE 0
+#endif
+
+#ifndef YORULOG_TRACE_LOG_CALLSITE
+  #define YORULOG_TRACE_LOG_CALLSITE 0
+#endif
+
+/* Backward-compatible umbrella switch */
+#ifndef YORULOG_TRACE_CALLSITE
+  #define YORULOG_TRACE_CALLSITE 0
+#endif
+
+#if YORULOG_TRACE_CALLSITE
+  #undef YORULOG_TRACE_PRINT_CALLSITE
+  #define YORULOG_TRACE_PRINT_CALLSITE 1
+  #undef YORULOG_TRACE_LOG_CALLSITE
+  #define YORULOG_TRACE_LOG_CALLSITE 1
+#endif
+
 /* Default log level (0~4): 0=ERROR, 1=WARN, 2=INFO, 3=DEBUG, 4=TRACE */
 #ifndef YORULOG_DEFAULT_LEVEL
   #define YORULOG_DEFAULT_LEVEL 4 /* TRACE */
@@ -273,12 +328,19 @@ extern unsigned char yorulog_tx_buf[YORULOG_TX_BUF_SIZE];
 #define g_stlog_tx_buf yorulog_tx_buf
 #endif
 
+#if YORULOG_USE_YORUASSERT && YORULOG_ASSERT_ON_ERROR
+  #define stlog__assert_msg_(expr, msg) YORUASSERT_MSG((expr), (msg))
+#else
+  #define stlog__assert_msg_(expr, msg) do { (void)(expr); (void)(msg); } while (0)
+#endif
+
 /* =========================================================
  *  Internal Helper Functions (no stdlib dependency)
  * ========================================================= */
 
 static inline void YORULOG_Init(UART_HandleTypeDef *huart)
 {
+    stlog__assert_msg_(huart != (UART_HandleTypeDef *)0, "yorulog init huart is null");
     g_stlog.huart = huart;
     g_stlog.level = (YORULOG_LevelTypeDef)YORULOG_DEFAULT_LEVEL;
 
@@ -294,6 +356,7 @@ static inline void YORULOG_Init(UART_HandleTypeDef *huart)
 
 static inline void YORULOG_SetLevel(YORULOG_LevelTypeDef lv)
 {
+    stlog__assert_msg_((unsigned)lv <= (unsigned)YORULOG_LEVEL_TRACE, "yorulog level is out of range");
     g_stlog.level = lv;
 }
 
@@ -318,6 +381,8 @@ static inline unsigned stlog__lvl_enabled_(YORULOG_LevelTypeDef lv)
 static inline void stlog__putc_(char c)
 {
 #if YORULOG_ENABLE
+    stlog__assert_msg_(g_stlog.huart != (UART_HandleTypeDef *)0, "yorulog print before init");
+    if (g_stlog.huart == (UART_HandleTypeDef *)0) return;
     (void)HAL_UART_Transmit(g_stlog.huart, (uint8_t*)&c, 1u, 0xFFFFu);
 #else
     (void)c;
@@ -519,6 +584,7 @@ static inline void stlog__prepare_dma_tx_(const unsigned char *ptr, unsigned len
 static inline void stlog__tx_blocking_bytes_(const unsigned char *buf, unsigned len)
 {
 #if YORULOG_ENABLE
+    stlog__assert_msg_(g_stlog.huart != (UART_HandleTypeDef *)0, "yorulog blocking tx before init");
     if (!buf || (len == 0u) || !g_stlog.huart) return;
 
     while (len != 0u) {
@@ -580,6 +646,10 @@ static inline void stlog__push_(YORULOG_HandleTypeDef *l, unsigned char c)
 static inline void stlog__flush_blocking_(YORULOG_HandleTypeDef *l)
 {
 #if YORULOG_ENABLE
+    stlog__assert_msg_(l != (YORULOG_HandleTypeDef *)0, "yorulog flush handle is null");
+    if (l != (YORULOG_HandleTypeDef *)0) {
+        stlog__assert_msg_(l->huart != (UART_HandleTypeDef *)0, "yorulog flush before init");
+    }
     if (!l || !l->huart) return;
     while (l->tx_busy) {}
 
@@ -605,6 +675,10 @@ static inline void stlog__flush_blocking_(YORULOG_HandleTypeDef *l)
 static inline void stlog__kick_(YORULOG_HandleTypeDef *l)
 {
 #if YORULOG_ENABLE
+    stlog__assert_msg_(l != (YORULOG_HandleTypeDef *)0, "yorulog kick handle is null");
+    if (l != (YORULOG_HandleTypeDef *)0) {
+        stlog__assert_msg_(l->huart != (UART_HandleTypeDef *)0, "yorulog kick before init");
+    }
     if (!l || !l->huart) return;
     if (l->head == l->tail) return;
     if (l->tx_busy) return;
@@ -637,6 +711,7 @@ static inline void stlog__kick_(YORULOG_HandleTypeDef *l)
 static inline void YORULOG_TxCpltCallback(UART_HandleTypeDef *huart)
 {
 #if YORULOG_ENABLE
+    stlog__assert_msg_(huart != (UART_HandleTypeDef *)0, "yorulog tx callback huart is null");
     if (g_stlog.huart == huart) {
         if (g_stlog.tx_busy) {
             g_stlog.tail = stlog__advance_(g_stlog.dma_tail, g_stlog.dma_len);
@@ -829,6 +904,38 @@ static inline void stlog_ptr_(const void *p)
 /* =========================================================
  *  Prefix and Timestamp Handling
  * ========================================================= */
+static inline const char *stlog__file_name_(const char *path)
+{
+    const char *name = path;
+
+    if (path == (const char *)0) return (const char *)0;
+
+    while (*path != '\0') {
+        if ((*path == '/') || (*path == '\\')) {
+            name = path + 1;
+        }
+        ++path;
+    }
+
+    return name;
+}
+
+static inline void stlog__emit_callsite_(const char *file, unsigned line)
+{
+#if YORULOG_ENABLE
+    const char *name = stlog__file_name_(file);
+
+    stlog_write_cstr_(" (");
+    stlog_write_cstr_(name ? name : "(null)");
+    stlog_char_(':');
+    stlog_u32_(line);
+    stlog_char_(')');
+#else
+    (void)file;
+    (void)line;
+#endif
+}
+
 static inline void stlog__emit_prefix_(YORULOG_LevelTypeDef lv)
 {
 #if YORULOG_ENABLE
@@ -951,11 +1058,13 @@ static inline void stlog_print_longln(const char *s)
         default:     stlog_ptr_ \
     )(x)
 
+#define stlog__callsite_() stlog__emit_callsite_(__FILE__, (unsigned)__LINE__)
+
 #if YORULOG_ENABLE
   #define YORULOG_Print(x)   do{ YORULOG_LOCK(); stlog__print_any_(x); YORULOG_UNLOCK(); }while(0)
-  #define YORULOG_Println(x) do{ YORULOG_LOCK(); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); }while(0)
+  #define YORULOG_Println(x) do{ YORULOG_LOCK(); stlog__print_any_(x); if(YORULOG_TRACE_PRINT_CALLSITE) stlog__callsite_(); stlog_nl_(); YORULOG_UNLOCK(); }while(0)
   #define YORULOG_PrintRaw(x)   do{ YORULOG_LOCK(); stlog__print_any_(x); YORULOG_UNLOCK(); }while(0)
-  #define YORULOG_PrintRawln(x) do{ YORULOG_LOCK(); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); }while(0)
+  #define YORULOG_PrintRawln(x) do{ YORULOG_LOCK(); stlog__print_any_(x); if(YORULOG_TRACE_PRINT_CALLSITE) stlog__callsite_(); stlog_nl_(); YORULOG_UNLOCK(); }while(0)
   #define print(x)   YORULOG_Print(x)
   #define println(x) YORULOG_Println(x)
 #else
@@ -971,17 +1080,17 @@ static inline void stlog_print_longln(const char *s)
  *  Level-based Logging Macros with Prefixes
  * ========================================================= */
 #if YORULOG_ENABLE
-  #define YORULOG_LogTag(tag, x) do{ YORULOG_LOCK(); stlog__emit_tag_(tag); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); }while(0)
-  #define YORULOG_LogErrorTag(tag, x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_ERROR)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_ERROR); stlog__emit_tag_(tag); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_ERROR); } }while(0)
-  #define YORULOG_LogWarnTag(tag, x)  do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_WARN )){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_WARN ); stlog__emit_tag_(tag); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_WARN ); } }while(0)
-  #define YORULOG_LogInfoTag(tag, x)  do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_INFO )){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_INFO ); stlog__emit_tag_(tag); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_INFO ); } }while(0)
-  #define YORULOG_LogDebugTag(tag, x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_DEBUG)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_DEBUG); stlog__emit_tag_(tag); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_DEBUG); } }while(0)
-  #define YORULOG_LogTraceTag(tag, x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_TRACE)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_TRACE); stlog__emit_tag_(tag); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_TRACE); } }while(0)
-  #define YORULOG_LogError(x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_ERROR)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_ERROR); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_ERROR); } }while(0)
-  #define YORULOG_LogWarn(x)  do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_WARN )){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_WARN ); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_WARN ); } }while(0)
-  #define YORULOG_LogInfo(x)  do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_INFO )){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_INFO ); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_INFO ); } }while(0)
-  #define YORULOG_LogDebug(x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_DEBUG)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_DEBUG); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_DEBUG); } }while(0)
-  #define YORULOG_LogTrace(x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_TRACE)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_TRACE); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_TRACE); } }while(0)
+  #define YORULOG_LogTag(tag, x) do{ YORULOG_LOCK(); stlog__emit_tag_(tag); stlog__print_any_(x); if(YORULOG_TRACE_LOG_CALLSITE) stlog__callsite_(); stlog_nl_(); YORULOG_UNLOCK(); }while(0)
+  #define YORULOG_LogErrorTag(tag, x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_ERROR)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_ERROR); stlog__emit_tag_(tag); stlog__print_any_(x); if(YORULOG_TRACE_LOG_CALLSITE) stlog__callsite_(); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_ERROR); } }while(0)
+  #define YORULOG_LogWarnTag(tag, x)  do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_WARN )){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_WARN ); stlog__emit_tag_(tag); stlog__print_any_(x); if(YORULOG_TRACE_LOG_CALLSITE) stlog__callsite_(); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_WARN ); } }while(0)
+  #define YORULOG_LogInfoTag(tag, x)  do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_INFO )){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_INFO ); stlog__emit_tag_(tag); stlog__print_any_(x); if(YORULOG_TRACE_LOG_CALLSITE) stlog__callsite_(); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_INFO ); } }while(0)
+  #define YORULOG_LogDebugTag(tag, x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_DEBUG)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_DEBUG); stlog__emit_tag_(tag); stlog__print_any_(x); if(YORULOG_TRACE_LOG_CALLSITE) stlog__callsite_(); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_DEBUG); } }while(0)
+  #define YORULOG_LogTraceTag(tag, x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_TRACE)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_TRACE); stlog__emit_tag_(tag); stlog__print_any_(x); if(YORULOG_TRACE_LOG_CALLSITE) stlog__callsite_(); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_TRACE); } }while(0)
+  #define YORULOG_LogError(x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_ERROR)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_ERROR); stlog__print_any_(x); if(YORULOG_TRACE_LOG_CALLSITE) stlog__callsite_(); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_ERROR); } }while(0)
+  #define YORULOG_LogWarn(x)  do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_WARN )){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_WARN ); stlog__print_any_(x); if(YORULOG_TRACE_LOG_CALLSITE) stlog__callsite_(); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_WARN ); } }while(0)
+  #define YORULOG_LogInfo(x)  do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_INFO )){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_INFO ); stlog__print_any_(x); if(YORULOG_TRACE_LOG_CALLSITE) stlog__callsite_(); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_INFO ); } }while(0)
+  #define YORULOG_LogDebug(x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_DEBUG)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_DEBUG); stlog__print_any_(x); if(YORULOG_TRACE_LOG_CALLSITE) stlog__callsite_(); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_DEBUG); } }while(0)
+  #define YORULOG_LogTrace(x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_TRACE)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_TRACE); stlog__print_any_(x); if(YORULOG_TRACE_LOG_CALLSITE) stlog__callsite_(); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_TRACE); } }while(0)
   #define loge(x) YORULOG_LogError(x)
   #define logw(x) YORULOG_LogWarn(x)
   #define logi(x) YORULOG_LogInfo(x)

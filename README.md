@@ -19,6 +19,7 @@ Yorulog is a good fit for firmware projects that are resource-constrained but st
 > | [Yorunvm](https://github.com/ExMikuPro/Yorunvm) | STM32 on-chip NVM / Flash access helper |
 > | [Yorukv](https://github.com/ExMikuPro/Yorukv) | Lightweight KV configuration library |
 > | [Yorubench](https://github.com/ExMikuPro/Yorubench) | Lightweight performance measurement library |
+> | [Yoruassert](https://github.com/ExMikuPro/Yoruassert.git) | Lightweight assertion helper |
 
 ---
 
@@ -95,6 +96,7 @@ These libraries follow similar design principles: single-header where practical,
 | [Yorush](https://github.com/ExMikuPro/Yorush) | UART shell / command parser | Provides lightweight serial command interaction, including command dispatch, argument parsing, and help output, with optional Yorulog-based output |
 | [Yorunvm](https://github.com/ExMikuPro/Yorunvm) | NVM / Flash helper | Lightweight helper for STM32 on-chip non-volatile storage, mainly wrapping Flash read, write, erase, and region protection |
 | [Yorukv](https://github.com/ExMikuPro/Yorukv) | KV config library | Lightweight key-value configuration layer with fixed-table registration, common base-type access, and optional single-region log-style persistence |
+| [Yoruassert](https://github.com/ExMikuPro/Yoruassert.git) | Assertion helper | Lightweight assertion helper with hook-based failure handling, intended for embedded runtime checks without forcing one output path |
 
 ### Example Combinations
 
@@ -104,10 +106,12 @@ These libraries can be integrated independently or combined into a more complete
 - `Yorush`: only need a lightweight serial command entry point
 - `Yorunvm`: only need controlled access to STM32 on-chip Flash
 - `Yorukv`: only need a simple key-value configuration layer
+- `Yoruassert`: only need lightweight runtime assertions and failure hooks
 - `Yorulog + Yorush`: view logs, run debug commands, and print help text over UART
 - `Yorunvm + Yorukv`: store configuration items in STM32 on-chip Flash
 - `Yorulog + Yorukv`: log configuration load, save, reset, and persistence errors
 - `Yorush + Yorukv`: inspect, modify, and reset configuration items through serial commands
+- `Yorulog + Yoruassert`: print assertion failures through the same lightweight UART log path when needed
 - `Yorulog + Yorush + Yorunvm + Yorukv`: build a lightweight combination of logging, command interaction, on-chip storage, and configuration management
 
 The goal of the Yoru family is not to become a large general-purpose framework. The goal is to provide a set of small utility libraries that can be dropped directly into STM32 projects. Each library tries to remain independent, trim, and replaceable.
@@ -121,6 +125,7 @@ Yorush   -> serial command entry
 Yorulog  -> log output
 Yorukv   -> configuration management
 Yorunvm  -> STM32 on-chip Flash access helper
+Yoruassert -> runtime assertion / failure hook
 ```
 
 Yorukv can attach to different storage backends through backend callbacks. For STM32 on-chip Flash use cases, Yorunvm can be used as the lower-level NVM access layer.
@@ -419,6 +424,18 @@ YORULOG_PrintRawln("\r");
 
 They currently follow the same output path as `YORULOG_Print()` / `YORULOG_Println()`, but the naming is useful when you want the call site to clearly express "plain output without log level prefix".
 
+If you want to append the call site to plain line output, you can enable:
+
+```c
+#define YORULOG_TRACE_PRINT_CALLSITE 1
+```
+
+Example:
+
+```text
+done (main.c:123)
+```
+
 ---
 
 ### Long Text Output
@@ -447,6 +464,41 @@ In `FULL` mode, this can be used to actively flush buffered data.
 
 ---
 
+### Optional Yoruassert Integration
+
+Yorulog can optionally use Yoruassert for internal parameter and state checks:
+
+```c
+#define YORULOG_USE_YORUASSERT 1
+#define YORULOG_YORUASSERT_HEADER "../Yoruassert/yoruassert.h"
+```
+
+If you also want invalid logger usage to trigger assertions, keep:
+
+```c
+#define YORULOG_ASSERT_ON_ERROR 1
+```
+
+Typical examples include calling `YORULOG_Init(NULL)`, printing before init, or passing an invalid log level.
+
+---
+
+### Optional Callsite Tail
+
+If you want complete log APIs to append the caller location, enable:
+
+```c
+#define YORULOG_TRACE_LOG_CALLSITE 1
+```
+
+Example:
+
+```text
+[I] boot ok (main.c:123)
+```
+
+---
+
 ## Configuration Macros
 
 All configuration macros must be defined before including `yorulog.h`.
@@ -463,6 +515,11 @@ All configuration macros must be defined before including `yorulog.h`.
 | `YORULOG_DROP_NEW_ON_FULL` | `0` | whether to drop new data when the buffer is full |
 | `YORULOG_BLOCK_ON_FULL` | `1` | whether to block or flush when the buffer is full |
 | `YORULOG_FORCE_BLOCKING_EW` | `1` | whether `ERROR` / `WARN` force a flush |
+| `YORULOG_USE_YORUASSERT` | `0` | enable optional Yoruassert integration |
+| `YORULOG_YORUASSERT_HEADER` | `"../Yoruassert/yoruassert.h"` | custom Yoruassert include path |
+| `YORULOG_ASSERT_ON_ERROR` | `1` | assert on invalid logger usage when Yoruassert is enabled |
+| `YORULOG_TRACE_PRINT_CALLSITE` | `0` | append `(file:line)` to `Println` / `PrintRawln` |
+| `YORULOG_TRACE_LOG_CALLSITE` | `0` | append `(file:line)` to `LogTag` / `LogXxx` / `LogXxxTag` |
 | `YORULOG_DMA_SECTION` | `".RAM_D2"` by default on H7 | section used for the DMA buffer |
 | `YORULOG_DMA_CACHE_CLEAN` | enabled by default on H7 / F7-class targets | whether to clean D-Cache before DMA TX |
 | `YORULOG_DMA_CACHE_LINE_SIZE` | `32` | cache line size used for cache-clean alignment |
