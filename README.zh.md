@@ -42,6 +42,10 @@ Yorulog 适合那些资源紧张、但仍然需要基础调试输出的固件工
   - `[I]`
   - `[D]`
   - `[T]`
+- **支持附加标签**：
+  - `[net]`
+  - `[ui]`
+  - `[sensor]`
 - **可选时间戳**
 - **常见类型自动输出**：
   - 字符串
@@ -372,6 +376,30 @@ YORULOG_LogTrace("trace");
 
 ---
 
+### 带标签的日志输出
+
+如果你希望在日志行里额外带一个轻量级模块名或功能标记，可以使用 `Tag` 系列宏：
+
+```c
+YORULOG_LogTag("boot", "start");
+YORULOG_LogInfoTag("net", "link up");
+YORULOG_LogWarnTag("sensor", 3);
+YORULOG_LogErrorTag("flash", (void*)0x08020000);
+```
+
+典型输出类似：
+
+```text
+[boot] start
+[I] [net] link up
+[W] [sensor] 3
+[E] [flash] 0x08020000
+```
+
+如果 `tag` 是 `NULL` 或空字符串，这一段附加标签会被自动跳过。
+
+---
+
 ### 原始输出
 
 ```c
@@ -382,6 +410,15 @@ YORULOG_Println("done");
 
 `YORULOG_Print()` 不会自动换行。  
 `YORULOG_Println()` 会在输出后追加换行。
+
+另外还提供了 `YORULOG_PrintRaw()` 和 `YORULOG_PrintRawln()` 这组更显式的原始输出别名：
+
+```c
+YORULOG_PrintRaw("AT+RST");
+YORULOG_PrintRawln("\r");
+```
+
+它们当前与 `YORULOG_Print()` / `YORULOG_Println()` 走的是同一条输出路径，但在调用处更容易表达“这里只做纯输出，不带日志等级前缀”的语义。
 
 ---
 

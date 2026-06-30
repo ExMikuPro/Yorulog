@@ -848,6 +848,18 @@ static inline void stlog__emit_prefix_(YORULOG_LevelTypeDef lv)
 #endif
 }
 
+static inline void stlog__emit_tag_(const char *tag)
+{
+#if YORULOG_ENABLE
+    if (!tag || (tag[0] == '\0')) return;
+    stlog_write_cstr_("[");
+    stlog_write_cstr_(tag);
+    stlog_write_cstr_("] ");
+#else
+    (void)tag;
+#endif
+}
+
 /* FULL mode: ERROR/WARN can force flush queue; MINI mode is always blocking */
 static inline void stlog__commit_level_(YORULOG_LevelTypeDef lv)
 {
@@ -942,11 +954,15 @@ static inline void stlog_print_longln(const char *s)
 #if YORULOG_ENABLE
   #define YORULOG_Print(x)   do{ YORULOG_LOCK(); stlog__print_any_(x); YORULOG_UNLOCK(); }while(0)
   #define YORULOG_Println(x) do{ YORULOG_LOCK(); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); }while(0)
+  #define YORULOG_PrintRaw(x)   do{ YORULOG_LOCK(); stlog__print_any_(x); YORULOG_UNLOCK(); }while(0)
+  #define YORULOG_PrintRawln(x) do{ YORULOG_LOCK(); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); }while(0)
   #define print(x)   YORULOG_Print(x)
   #define println(x) YORULOG_Println(x)
 #else
   #define YORULOG_Print(x)   do{ (void)(x); }while(0)
   #define YORULOG_Println(x) do{ (void)(x); }while(0)
+  #define YORULOG_PrintRaw(x)   do{ (void)(x); }while(0)
+  #define YORULOG_PrintRawln(x) do{ (void)(x); }while(0)
   #define print(x)   do{ (void)(x); }while(0)
   #define println(x) do{ (void)(x); }while(0)
 #endif
@@ -955,6 +971,12 @@ static inline void stlog_print_longln(const char *s)
  *  Level-based Logging Macros with Prefixes
  * ========================================================= */
 #if YORULOG_ENABLE
+  #define YORULOG_LogTag(tag, x) do{ YORULOG_LOCK(); stlog__emit_tag_(tag); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); }while(0)
+  #define YORULOG_LogErrorTag(tag, x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_ERROR)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_ERROR); stlog__emit_tag_(tag); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_ERROR); } }while(0)
+  #define YORULOG_LogWarnTag(tag, x)  do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_WARN )){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_WARN ); stlog__emit_tag_(tag); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_WARN ); } }while(0)
+  #define YORULOG_LogInfoTag(tag, x)  do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_INFO )){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_INFO ); stlog__emit_tag_(tag); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_INFO ); } }while(0)
+  #define YORULOG_LogDebugTag(tag, x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_DEBUG)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_DEBUG); stlog__emit_tag_(tag); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_DEBUG); } }while(0)
+  #define YORULOG_LogTraceTag(tag, x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_TRACE)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_TRACE); stlog__emit_tag_(tag); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_TRACE); } }while(0)
   #define YORULOG_LogError(x) do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_ERROR)){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_ERROR); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_ERROR); } }while(0)
   #define YORULOG_LogWarn(x)  do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_WARN )){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_WARN ); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_WARN ); } }while(0)
   #define YORULOG_LogInfo(x)  do{ if(stlog__lvl_enabled_(YORULOG_LEVEL_INFO )){ YORULOG_LOCK(); stlog__emit_prefix_(YORULOG_LEVEL_INFO ); stlog__print_any_(x); stlog_nl_(); YORULOG_UNLOCK(); stlog__commit_level_(YORULOG_LEVEL_INFO ); } }while(0)
@@ -966,6 +988,12 @@ static inline void stlog_print_longln(const char *s)
   #define logd(x) YORULOG_LogDebug(x)
   #define logt(x) YORULOG_LogTrace(x)
 #else
+  #define YORULOG_LogTag(tag, x) do{ (void)(tag); (void)(x); }while(0)
+  #define YORULOG_LogErrorTag(tag, x) do{ (void)(tag); (void)(x); }while(0)
+  #define YORULOG_LogWarnTag(tag, x)  do{ (void)(tag); (void)(x); }while(0)
+  #define YORULOG_LogInfoTag(tag, x)  do{ (void)(tag); (void)(x); }while(0)
+  #define YORULOG_LogDebugTag(tag, x) do{ (void)(tag); (void)(x); }while(0)
+  #define YORULOG_LogTraceTag(tag, x) do{ (void)(tag); (void)(x); }while(0)
   #define YORULOG_LogError(x) do{ (void)(x); }while(0)
   #define YORULOG_LogWarn(x)  do{ (void)(x); }while(0)
   #define YORULOG_LogInfo(x)  do{ (void)(x); }while(0)

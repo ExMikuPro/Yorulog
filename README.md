@@ -41,6 +41,10 @@ Yorulog is a good fit for firmware projects that are resource-constrained but st
   - `[I]`
   - `[D]`
   - `[T]`
+- **Optional extra tags**:
+  - `[net]`
+  - `[ui]`
+  - `[sensor]`
 - **Optional timestamps**
 - **Automatic output for common types**:
   - string
@@ -370,6 +374,30 @@ The logging macros take one argument and automatically recognize common types:
 
 ---
 
+### Tagged Log Output
+
+If you want to keep a small module or feature marker in the log line, you can use the `Tag` macros:
+
+```c
+YORULOG_LogTag("boot", "start");
+YORULOG_LogInfoTag("net", "link up");
+YORULOG_LogWarnTag("sensor", 3);
+YORULOG_LogErrorTag("flash", (void*)0x08020000);
+```
+
+Typical output looks like:
+
+```text
+[boot] start
+[I] [net] link up
+[W] [sensor] 3
+[E] [flash] 0x08020000
+```
+
+If `tag` is `NULL` or an empty string, the extra tag part is skipped automatically.
+
+---
+
 ### Raw Output
 
 ```c
@@ -380,6 +408,15 @@ YORULOG_Println("done");
 
 `YORULOG_Print()` does not append a newline.  
 `YORULOG_Println()` appends a newline after the output.
+
+`YORULOG_PrintRaw()` and `YORULOG_PrintRawln()` are also provided as explicit raw-output aliases:
+
+```c
+YORULOG_PrintRaw("AT+RST");
+YORULOG_PrintRawln("\r");
+```
+
+They currently follow the same output path as `YORULOG_Print()` / `YORULOG_Println()`, but the naming is useful when you want the call site to clearly express "plain output without log level prefix".
 
 ---
 
