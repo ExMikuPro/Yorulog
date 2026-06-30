@@ -10,7 +10,7 @@ Yorulog is a good fit for firmware projects that are resource-constrained but st
 
 > **Yoru Series**
 >
-> A family of lightweight utility libraries for STM32 HAL. Each library can be used independently or combined as needed.
+> Related lightweight utility libraries for STM32 HAL.
 >
 > | Library | Role |
 > | --- | --- |
