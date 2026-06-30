@@ -17,7 +17,7 @@ Yorulog 适合那些资源紧张、但仍然需要基础调试输出的固件工
 > | --- | --- |
 > | [Yorulog](https://github.com/ExMikuPro/Yorulog) | 轻量级 UART 日志库 |
 > | [Yorush](https://github.com/ExMikuPro/Yorush) | 轻量级 UART Shell / 命令解析器 |
-> | [Yorunvm](https://github.com/ExMikuPro/Yorunvm) | STM32 片上 NVM / Flash 访问辅助库 |
+> | [Yorunvm](https://github.com/ExMikuPro/Yorunvm) | STM32 片上 NVM / Flash / EEPROM 访问辅助库 |
 > | [Yorukv](https://github.com/ExMikuPro/Yorukv) | 轻量级 KV 配置库 |
 > | [Yorubench](https://github.com/ExMikuPro/Yorubench) | 轻量级性能测量库 |
 > | [Yoruassert](https://github.com/ExMikuPro/Yoruassert.git) | 轻量级断言辅助库 |
@@ -96,7 +96,7 @@ Yorulog 属于 Yoru 系列轻量级 STM32 工具库。
 | --- | --- | --- |
 | [Yorulog](https://github.com/ExMikuPro/Yorulog) | UART 日志库 | 当前仓库。提供轻量级 UART 日志输出，支持 MINI / FULL 模式，可选 UART TX DMA |
 | [Yorush](https://github.com/ExMikuPro/Yorush) | UART Shell / 命令解析器 | 提供轻量级串口命令交互能力，支持命令分发、参数解析和帮助信息输出，可选择复用 Yorulog 作为输出路径 |
-| [Yorunvm](https://github.com/ExMikuPro/Yorunvm) | NVM / Flash 辅助库 | 面向 STM32 片上非易失存储的轻量级访问辅助库，主要用于封装片上 Flash 的读、写、擦除和访问范围保护 |
+| [Yorunvm](https://github.com/ExMikuPro/Yorunvm) | NVM / Flash / EEPROM 辅助库 | 面向 STM32 片上非易失存储的轻量级访问辅助库，主要用于封装片上 Flash / EEPROM 的访问与区域保护 |
 | [Yorukv](https://github.com/ExMikuPro/Yorukv) | KV 配置库 | 轻量级键值配置层，支持固定表注册、常见基础类型读写，以及可选的单区域日志式持久化 |
 | [Yoruassert](https://github.com/ExMikuPro/Yoruassert.git) | 断言辅助库 | 轻量级运行时断言辅助库，使用 hook 处理失败路径，不强绑某一种输出方式 |
 
@@ -106,11 +106,11 @@ Yorulog 属于 Yoru 系列轻量级 STM32 工具库。
 
 - `Yorulog`：只需要基础 UART 日志输出
 - `Yorush`：只需要一个轻量级串口命令入口
-- `Yorunvm`：只需要对 STM32 片上 Flash 做受控访问
+- `Yorunvm`：只需要对 STM32 片上 Flash / EEPROM 做受控访问
 - `Yorukv`：只需要一层简单的键值配置管理
 - `Yoruassert`：只需要轻量级运行时断言和失败回调
 - `Yorulog + Yorush`：通过串口查看日志、执行调试命令、输出帮助信息
-- `Yorunvm + Yorukv`：使用 STM32 片上 Flash 保存配置项
+- `Yorunvm + Yorukv`：使用 STM32 片上 Flash / EEPROM 保存配置项
 - `Yorulog + Yorukv`：记录配置加载、保存、恢复默认值和持久化错误
 - `Yorush + Yorukv`：通过串口命令查看、修改、重置配置项
 - `Yorulog + Yoruassert`：在需要时通过同一条轻量级 UART 日志路径输出断言失败信息
@@ -126,11 +126,11 @@ Yoru 系列的目标不是做一个大型通用框架，而是提供一组可以
 Yorush   -> 串口命令入口
 Yorulog  -> 日志输出
 Yorukv   -> 配置项管理
-Yorunvm  -> STM32 片上 Flash 访问辅助
+Yorunvm  -> STM32 片上 Flash / EEPROM 访问辅助
 Yoruassert -> 运行时断言 / 失败回调
 ```
 
-其中，Yorukv 可以通过后端回调接入不同的存储实现；在 STM32 片上 Flash 场景下，可以使用 Yorunvm 作为更底层的 NVM 访问层。
+其中，Yorukv 可以通过后端回调接入不同的存储实现；在 STM32 片上 Flash / EEPROM 场景下，可以使用 Yorunvm 作为更底层的 NVM 访问层。
 
 ---
 
