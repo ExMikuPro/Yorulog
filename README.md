@@ -18,6 +18,7 @@ Yorulog is a good fit for firmware projects that are resource-constrained but st
 > | [Yorush](https://github.com/ExMikuPro/Yorush) | Lightweight UART shell / command parser |
 > | [Yorunvm](https://github.com/ExMikuPro/Yorunvm) | STM32 on-chip NVM / Flash access helper |
 > | [Yorukv](https://github.com/ExMikuPro/Yorukv) | Lightweight KV configuration library |
+> | [Yorubench](https://github.com/ExMikuPro/Yorubench) | Lightweight performance measurement library |
 
 ---
 

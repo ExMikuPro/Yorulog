@@ -19,6 +19,7 @@ Yorulog 适合那些资源紧张、但仍然需要基础调试输出的固件工
 > | [Yorush](https://github.com/ExMikuPro/Yorush) | 轻量级 UART Shell / 命令解析器 |
 > | [Yorunvm](https://github.com/ExMikuPro/Yorunvm) | STM32 片上 NVM / Flash 访问辅助库 |
 > | [Yorukv](https://github.com/ExMikuPro/Yorukv) | 轻量级 KV 配置库 |
+> | [Yorubench](https://github.com/ExMikuPro/Yorubench) | 轻量级性能测量库 |
 
 ---
 
